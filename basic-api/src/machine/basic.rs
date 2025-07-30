@@ -1056,11 +1056,6 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
         // Generate public traces.
         let t_public_traces = start_timer!(|| "valida >machine.prove(..) | public_traces");
         let mut public_traces = self.generate_public_traces(config, show_public, show_public_dims);
-        if let Some(PublicTrace::PublicVector(public_row)) = public_traces[0].as_mut() {
-            public_row.0[1] = SC::Val::from_canonical_u64(0);
-            //println!("##################### {:?}", public_row);
-        }
-        println!("public trace: {:?}", public_traces);
         end_timer!(t_public_traces);
 
         // Commit to the public trace
@@ -1091,127 +1086,14 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
         let mut add_trace = &mut traces_14.0[0];
         let mut range_trace = &mut traces_14.1[8];
 
-        if let Some(mem_trace) = mem_trace.as_mut() {
-            println!("#rows of Mem trace: {}", mem_trace.height());
-            println!("========= Original Memory Traces =========\n");
-            for i in 0..mem_trace.height() {
-                let row = mem_trace.row_mut(i);
-                let row: &mut MemoryCols<SC::Val> = row.borrow_mut();
-                println!("mem trace[{}]: {:?}\n", i, row);
-            }
-
-            println!("========= Malformed Memory Traces =========\n");
-            {
-                let row = mem_trace.row_mut(0);
-                let row: &mut MemoryCols<SC::Val> = row.borrow_mut();
-                row.addr = row.addr - SC::Val::from_canonical_u64(4096);
-                row.addr_bytes.0[1] = SC::Val::from_canonical_u64(0);
-                println!("mem trace[{}]: {:?}\n", 0, row);
-            }
-
-            {
-                let row = mem_trace.row_mut(1);
-                let row: &mut MemoryCols<SC::Val> = row.borrow_mut();
-                row.addr = row.addr - SC::Val::from_canonical_u64(4096);
-                row.addr_bytes.0[1] = SC::Val::from_canonical_u64(0);
-                println!("mem trace[{}]: {:?}\n", 1, row);
-            }
-
-            {
-                let row = mem_trace.row_mut(2);
-                let row: &mut MemoryCols<SC::Val> = row.borrow_mut();
-                row.addr = row.addr - SC::Val::from_canonical_u64(4096);
-                row.addr_bytes.0[1] = SC::Val::from_canonical_u64(0);
-                println!("mem trace[{}]: {:?}\n", 2, row);
-            }
-
-            {
-                let row = mem_trace.row_mut(3);
-                let row: &mut MemoryCols<SC::Val> = row.borrow_mut();
-                row.addr = row.addr - SC::Val::from_canonical_u64(4096);
-                row.addr_bytes.0[1] = SC::Val::from_canonical_u64(0);
-                println!("mem trace[{}]: {:?}\n", 3, row);
-            }
-
-            {
-                let row = mem_trace.row_mut(4);
-                let row: &mut MemoryCols<SC::Val> = row.borrow_mut();
-                row.addr = row.addr - SC::Val::from_canonical_u64(4096);
-                row.addr_bytes.0[1] = SC::Val::from_canonical_u64(0);
-                println!("mem trace[{}]: {:?}\n", 4, row);
-            }
-
-            {
-                let row = mem_trace.row_mut(5);
-                let row: &mut MemoryCols<SC::Val> = row.borrow_mut();
-                row.addr = row.addr - SC::Val::from_canonical_u64(4096);
-                row.addr_bytes.0[1] = SC::Val::from_canonical_u64(0);
-                println!("mem trace[{}]: {:?}\n", 5, row);
-            }
-
-            {
-                let row = mem_trace.row_mut(6);
-                let row: &mut MemoryCols<SC::Val> = row.borrow_mut();
-                row.addr = row.addr - SC::Val::from_canonical_u64(4096);
-                row.addr_bytes.0[1] = SC::Val::from_canonical_u64(0);
-                println!("mem trace[{}]: {:?}\n", 6, row);
-            }
-        }
-
         if let Some(cpu_trace) = cpu_trace.as_mut() {
-            println!("#rows of Cpu trace: {}", cpu_trace.height());
-            println!("========= Original CPU Traces =========\n");
-            for i in 0..cpu_trace.height() {
-                let row = cpu_trace.row_mut(i);
-                let row: &mut CpuCols<SC::Val> = row.borrow_mut();
-                println!("cpu trace[{}]: {:?}\n", i, row);
-            }
-
             println!("========= Malformed CPU Traces =========\n");
-            {
-                let cpu_row = cpu_trace.row_mut(0);
-                let cpu_row: &mut CpuCols<SC::Val> = cpu_row.borrow_mut();
-                //println!("cpu trace: {:?}", cpu_row);
-                cpu_row.fp = SC::Val::from_canonical_u32(0);
-                cpu_row.mem_write_channels[0].addr =
-                    cpu_row.mem_write_channels[0].addr - SC::Val::from_canonical_u32(4096);
-                println!("cpu trace: {:?}\n", cpu_row);
-            }
-
-            {
-                let cpu_row = cpu_trace.row_mut(1);
-                let cpu_row: &mut CpuCols<SC::Val> = cpu_row.borrow_mut();
-                //println!("cpu trace: {:?}", cpu_row);
-                cpu_row.fp = SC::Val::from_canonical_u32(0);
-                cpu_row.mem_write_channels[0].addr =
-                    cpu_row.mem_write_channels[0].addr - SC::Val::from_canonical_u32(4096);
-                println!("cpu trace: {:?}\n", cpu_row);
-            }
-
-            {
-                let cpu_row = cpu_trace.row_mut(2);
-                let cpu_row: &mut CpuCols<SC::Val> = cpu_row.borrow_mut();
-                //println!("cpu trace: {:?}", cpu_row);
-                cpu_row.fp = SC::Val::from_canonical_u32(0);
-                cpu_row.mem_read_channels[0].addr =
-                    cpu_row.mem_read_channels[0].addr - SC::Val::from_canonical_u32(4096);
-                //cpu_row.mem_read_channels[1].addr =
-                //    SC::Val::from_canonical_u32(0) - SC::Val::from_canonical_u32(16);
-                cpu_row.mem_write_channels[0].addr =
-                    cpu_row.mem_write_channels[0].addr - SC::Val::from_canonical_u32(4096);
-                cpu_row.opcode_flags.is_loadfp = SC::Val::from_canonical_u32(1);
-                cpu_row.opcode_flags.is_left_imm_op =
-                    SC::Val::from_canonical_u32(0) - SC::Val::from_canonical_u32(1);
-                println!("cpu trace: {:?}\n", cpu_row);
-            }
-
-            {
-                let cpu_row = cpu_trace.row_mut(3);
-                let cpu_row: &mut CpuCols<SC::Val> = cpu_row.borrow_mut();
-                //println!("cpu trace: {:?}", cpu_row);
-                cpu_row.fp = SC::Val::from_canonical_u32(0);
-                println!("cpu trace: {:?}\n", cpu_row);
-            }
+            let cpu_row = cpu_trace.row_mut(2);
+            let cpu_row: &mut CpuCols<SC::Val> = cpu_row.borrow_mut();
+            cpu_row.opcode_flags.is_loadfp = SC::Val::from_canonical_u32(1);
+            cpu_row.opcode_flags.is_left_imm_op =
+                SC::Val::from_canonical_u32(0) - SC::Val::from_canonical_u32(1);
+            println!("cpu trace: {:?}\n", cpu_row);
         }
 
         let has_main_traces = has_traces(&main_traces);
@@ -1501,11 +1383,6 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
             .clone()
             .try_into()
             .unwrap();
-        if let Some(PublicTrace::PublicVector(public_row)) = public_traces[0].as_mut() {
-            println!("##################### {:?}", public_row);
-            public_row.0[1] = SC::Val::from_canonical_u64(0);
-            println!("##################### {:?}", public_row);
-        }
 
         // Commit to the public trace to get the public commitment
         let (public_commit, _) =

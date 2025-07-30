@@ -911,7 +911,7 @@ fn prove_program(
     machine.set_max_trace_height(65536);
     let rom = ProgramROM::new(program);
     machine.set_program_rom(rom, program_table_type);
-    machine.set_initial_register_values(valida_cpu::Registers { pc: 0, fp: 0x1000 });
+    machine.set_initial_register_values(valida_cpu::Registers { pc: 0, fp: 0 });
 
     let mut runtime = ValidaRuntime::default_for_field::<BabyBear>();
     let mut state = machine.start(&mut runtime);
@@ -987,6 +987,7 @@ fn prove_div() {
     let program = div_program::<BabyBear>();
     let (_machine, memory_backend) = prove_program(program, ProgramTableType::Public);
     expected_div_memory_state(&memory_backend);
+    assert!(false);
 }
 
 #[test]
@@ -1080,6 +1081,7 @@ fn prove_sdiv() {
     let program = sdiv_program::<BabyBear>();
     let (_machine, memory_backend) = prove_program(program, ProgramTableType::Public);
     expected_sdiv_memory_state(&memory_backend);
+    assert!(false);
 }
 
 #[test]
@@ -1136,6 +1138,7 @@ fn prove_single_byte_instrs() {
     let program = single_byte_program::<BabyBear>();
     let (_machine, memory_backend) = prove_program(program, ProgramTableType::Public);
     expected_single_byte_memory_state(&memory_backend);
+    assert!(false);
 }
 
 fn expected_fibonacci_memory_state(memory_backend: &ValidaMemoryBackend) {
@@ -1156,6 +1159,7 @@ fn prove_fibonacci() {
     assert_eq!(machine.mem().operations.values().flatten().count(), 414);
     assert_eq!(machine.add_u32().operations.len(), 105);
     expected_fibonacci_memory_state(&memory_backend);
+    assert!(false);
 }
 
 #[test]
