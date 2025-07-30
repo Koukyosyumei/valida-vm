@@ -1029,7 +1029,6 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
             pk.preprocessed_commit(),
             pk.preprocessed_prover_data(),
         );
-        //println!("preprocessed_traces: {:?}", preprocessed_traces);
 
         let has_preprocessed_traces = has_traces(&preprocessed_traces.to_vec());
 
@@ -1078,13 +1077,6 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
 
         let mut traces_01 = &mut main_traces.split_at_mut(1);
         let mut cpu_trace = &mut traces_01.0[0];
-        let mut traces_12 = &mut traces_01.1.split_at_mut(1);
-        let mut program_trace = &mut traces_12.0[0];
-        let mut traces_13 = &mut traces_12.1.split_at_mut(1);
-        let mut mem_trace = &mut traces_13.0[0];
-        let mut traces_14 = &mut traces_13.1.split_at_mut(1);
-        let mut add_trace = &mut traces_14.0[0];
-        let mut range_trace = &mut traces_14.1[8];
 
         if let Some(cpu_trace) = cpu_trace.as_mut() {
             println!("========= Malformed CPU Traces =========\n");
@@ -1378,7 +1370,7 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
         let g_subgroups = compute_g_subgroups::<F, SC>(&proof.chip_proofs);
 
         // Generate public traces
-        let mut public_traces: [Option<PublicTrace<SC::Val>>; NUM_CHIPS] = instance_data
+        let public_traces: [Option<PublicTrace<SC::Val>>; NUM_CHIPS] = instance_data
             .public_traces(show_public)[0]
             .clone()
             .try_into()

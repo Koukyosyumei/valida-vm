@@ -987,7 +987,6 @@ fn prove_div() {
     let program = div_program::<BabyBear>();
     let (_machine, memory_backend) = prove_program(program, ProgramTableType::Public);
     expected_div_memory_state(&memory_backend);
-    assert!(false);
 }
 
 #[test]
@@ -1081,7 +1080,6 @@ fn prove_sdiv() {
     let program = sdiv_program::<BabyBear>();
     let (_machine, memory_backend) = prove_program(program, ProgramTableType::Public);
     expected_sdiv_memory_state(&memory_backend);
-    assert!(false);
 }
 
 #[test]
@@ -1138,7 +1136,6 @@ fn prove_single_byte_instrs() {
     let program = single_byte_program::<BabyBear>();
     let (_machine, memory_backend) = prove_program(program, ProgramTableType::Public);
     expected_single_byte_memory_state(&memory_backend);
-    assert!(false);
 }
 
 fn expected_fibonacci_memory_state(memory_backend: &ValidaMemoryBackend) {
@@ -1159,7 +1156,6 @@ fn prove_fibonacci() {
     assert_eq!(machine.mem().operations.values().flatten().count(), 414);
     assert_eq!(machine.add_u32().operations.len(), 105);
     expected_fibonacci_memory_state(&memory_backend);
-    assert!(false);
 }
 
 #[test]
