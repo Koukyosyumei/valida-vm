@@ -1072,7 +1072,7 @@ fn expected_sdiv_memory_state(memory_backend: &ValidaMemoryBackend) {
 fn prove_small_add() {
     let program = add_program::<BabyBear>();
     let (_machine, _memory_backend) = prove_program(program, ProgramTableType::Public);
-    assert!(false);
+    assert!(false, "Verification should fail.");
 }
 
 #[test]
