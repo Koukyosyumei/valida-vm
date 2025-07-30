@@ -1,6 +1,9 @@
 #![feature(trait_upcasting)]
 use core::marker::PhantomData;
 
+use std::borrow::BorrowMut;
+use valida_cpu::columns::CpuCols;
+
 use std::fs::File;
 use std::io::Write;
 use std::ops::RangeInclusive;
@@ -1069,8 +1072,72 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
 
         // Generate main traces.
         let t_main_traces = start_timer!(|| "valida >machine.prove(..) | main_traces");
-        let main_traces = self.generate_main_traces(config, show_main, show_main_dims);
+        let mut main_traces = self.generate_main_traces(config, show_main, show_main_dims);
         end_timer!(t_main_traces);
+
+        let mut traces_01 = &mut main_traces.split_at_mut(1);
+        let mut cpu_trace = &mut traces_01.0[0];
+        let mut traces_12 = &mut traces_01.1.split_at_mut(1);
+        let mut program_trace = &mut traces_12.0[0];
+        let mut traces_13 = &mut traces_12.1.split_at_mut(1);
+        let mut mem_trace = &mut traces_13.0[0];
+        let mut traces_14 = &mut traces_13.1.split_at_mut(1);
+        let mut add_trace = &mut traces_14.0[0];
+        let mut range_trace = &mut traces_14.1[8];
+
+        if let Some(cpu_trace) = cpu_trace.as_mut() {
+            println!("#rows of Cpu trace: {}", cpu_trace.height());
+            println!("========= Original CPU Traces =========\n");
+            for i in 0..cpu_trace.height() {
+                let row = cpu_trace.row_mut(i);
+                let row: &mut CpuCols<SC::Val> = row.borrow_mut();
+                println!("cpu trace[{}]: {:?}\n", i, row);
+            }
+
+            println!("========= Malformed CPU Traces =========\n");
+            {
+                let cpu_row = cpu_trace.row_mut(0);
+                let cpu_row: &mut CpuCols<SC::Val> = cpu_row.borrow_mut();
+                //println!("cpu trace: {:?}", cpu_row);
+                cpu_row.fp = SC::Val::from_canonical_u32(0);
+                cpu_row.mem_write_channels[0].addr =
+                    SC::Val::from_canonical_u32(0) - SC::Val::from_canonical_u32(4);
+                println!("cpu trace: {:?}\n", cpu_row);
+            }
+
+            {
+                let cpu_row = cpu_trace.row_mut(1);
+                let cpu_row: &mut CpuCols<SC::Val> = cpu_row.borrow_mut();
+                //println!("cpu trace: {:?}", cpu_row);
+                cpu_row.fp = SC::Val::from_canonical_u32(0);
+                cpu_row.mem_write_channels[0].addr = SC::Val::from_canonical_u32(0);
+                println!("cpu trace: {:?}\n", cpu_row);
+            }
+
+            {
+                let cpu_row = cpu_trace.row_mut(2);
+                let cpu_row: &mut CpuCols<SC::Val> = cpu_row.borrow_mut();
+                //println!("cpu trace: {:?}", cpu_row);
+                cpu_row.fp = SC::Val::from_canonical_u32(0);
+                cpu_row.mem_read_channels[0].addr = SC::Val::from_canonical_u32(0);
+                cpu_row.mem_read_channels[1].addr =
+                    SC::Val::from_canonical_u32(0) - SC::Val::from_canonical_u32(16);
+                cpu_row.opcode_flags.is_loadfp = SC::Val::from_canonical_u32(1);
+                cpu_row.opcode_flags.is_left_imm_op =
+                    SC::Val::from_canonical_u32(0) - SC::Val::from_canonical_u32(1);
+                println!("cpu trace: {:?}\n", cpu_row);
+            }
+
+            {
+                let cpu_row = cpu_trace.row_mut(3);
+                let cpu_row: &mut CpuCols<SC::Val> = cpu_row.borrow_mut();
+                //println!("cpu trace: {:?}", cpu_row);
+                cpu_row.fp = SC::Val::from_canonical_u32(0);
+                println!("cpu trace: {:?}\n", cpu_row);
+            }
+            /*
+             */
+        }
 
         let has_main_traces = has_traces(&main_traces);
 
