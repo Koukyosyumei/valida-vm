@@ -1,6 +1,9 @@
 #![feature(trait_upcasting)]
 use core::marker::PhantomData;
 
+use std::borrow::BorrowMut;
+use valida_cpu::columns::{CpuCols, CpuPublicVector};
+
 use std::fs::File;
 use std::io::Write;
 use std::ops::RangeInclusive;
@@ -1069,8 +1072,21 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
 
         // Generate main traces.
         let t_main_traces = start_timer!(|| "valida >machine.prove(..) | main_traces");
-        let main_traces = self.generate_main_traces(config, show_main, show_main_dims);
+        let mut main_traces = self.generate_main_traces(config, show_main, show_main_dims);
         end_timer!(t_main_traces);
+
+        let mut traces_01 = &mut main_traces.split_at_mut(1);
+        let mut cpu_trace = &mut traces_01.0[0];
+
+        if let Some(cpu_trace) = cpu_trace.as_mut() {
+            println!("========= Malformed CPU Traces =========\n");
+            {
+                let cpu_row = cpu_trace.row_mut(9);
+                let cpu_row: &mut CpuCols<SC::Val> = cpu_row.borrow_mut();
+                cpu_row.opcode_flags.is_beq = SC::Val::from_canonical_u64(1234);
+                println!("cpu trace: {:?}\n", cpu_row);
+            }
+        }
 
         let has_main_traces = has_traces(&main_traces);
 

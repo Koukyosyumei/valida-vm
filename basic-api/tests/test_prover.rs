@@ -1114,7 +1114,7 @@ fn expected_fibonacci_memory_state(memory_backend: &ValidaMemoryBackend) {
 }
 
 #[test]
-fn prove_fibonacci() {
+fn prove_malformed_fibonacci() {
     let program = fib_program::<BabyBear>();
 
     let (machine, memory_backend) = prove_program(program, ProgramTableType::Public);
@@ -1124,6 +1124,8 @@ fn prove_fibonacci() {
     assert_eq!(machine.mem().operations.values().flatten().count(), 414);
     assert_eq!(machine.add_u32().operations.len(), 105);
     expected_fibonacci_memory_state(&memory_backend);
+
+    assert!(false, "Verification should fail.");
 }
 
 #[test]
