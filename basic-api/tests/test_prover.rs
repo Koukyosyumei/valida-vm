@@ -47,6 +47,31 @@ use valida_machine::__internal::p3_commit::ExtensionMmcs;
 mod common;
 use common::*;
 
+fn add_program<Val: StarkField>() -> Vec<InstructionWord<i32>> {
+    let mut program = vec![];
+
+    program.extend([
+        InstructionWord {
+            opcode: <Imm32Instruction as Instruction<BasicMachine<Val>, Val>>::OPCODE,
+            operands: Operands([4, 0, 0, 0, 0]),
+        },
+        InstructionWord {
+            opcode: <Imm32Instruction as Instruction<BasicMachine<Val>, Val>>::OPCODE,
+            operands: Operands([0, 0, 0, 0, 0]),
+        },
+        InstructionWord {
+            opcode: <Add32Instruction as Instruction<BasicMachine<Val>, Val>>::OPCODE,
+            operands: Operands([16, 0, 0, 0, 1]),
+        },
+        InstructionWord {
+            opcode: <StopInstruction as Instruction<BasicMachine<Val>, Val>>::OPCODE,
+            operands: Operands::default(),
+        },
+    ]);
+
+    program
+}
+
 fn div_program<Val: StarkField>() -> Vec<InstructionWord<i32>> {
     let mut program = vec![];
 
@@ -886,7 +911,10 @@ fn prove_program(
     machine.set_max_trace_height(65536);
     let rom = ProgramROM::new(program);
     machine.set_program_rom(rom, program_table_type);
-    machine.set_initial_register_values(valida_cpu::Registers { pc: 0, fp: 0x1000 });
+    machine.set_initial_register_values(valida_cpu::Registers {
+        pc: 2013265918,
+        fp: 0x1000,
+    });
 
     let mut runtime = ValidaRuntime::default_for_field::<BabyBear>();
     let mut state = machine.start(&mut runtime);
@@ -1041,6 +1069,13 @@ fn expected_sdiv_memory_state(memory_backend: &ValidaMemoryBackend) {
         memory_backend.get_value(0x1000 + 40),
         Word::from(0) // 0 / -3 = 0
     );
+}
+
+#[test]
+fn prove_small_add() {
+    let program = add_program::<BabyBear>();
+    let (_machine, _memory_backend) = prove_program(program, ProgramTableType::Public);
+    assert!(false, "Verification should fail.");
 }
 
 #[test]
