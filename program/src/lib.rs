@@ -169,6 +169,18 @@ fn instruction_to_row<F: PrimeField32>(
         }
     }
 
+    if cols.opcode == F::from_canonical_u16(7) {
+        if cols.operands.0[0] == F::from_canonical_u16(4) {
+            cols.pc = F::from_canonical_u64(1);
+        } else {
+            cols.pc = F::from_canonical_u64(2);
+        }
+    } else if cols.opcode == F::from_canonical_u16(100) {
+        cols.pc = F::from_canonical_u64(3);
+    } else {
+        cols.pc = F::from_canonical_u64(4);
+    }
+
     println!("instruction_to_row: {:?}", cols);
 
     SmallVec::from_buf(row)
