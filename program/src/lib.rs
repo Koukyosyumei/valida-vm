@@ -1,5 +1,3 @@
-#![no_std]
-
 extern crate alloc;
 
 use crate::columns::NUM_PROGRAM_COLS;
@@ -133,7 +131,7 @@ fn instruction_to_row<F: PrimeField32>(
     let mut row: [MaybeUninit<F>; NUM_PROGRAM_COLS] =
         unsafe { MaybeUninit::uninit().assume_init() };
     let cols: &mut ProgramCols<MaybeUninit<F>> = { unsafe { transmute(&mut row) } };
-    cols.pc.write(F::from_canonical_usize(pc));
+    cols.pc.write(F::from_canonical_usize(pc + 1));
     cols.opcode.write(F::from_canonical_u32(word.opcode));
 
     let operands = Operands::<F>::from_operands_i32(&word.operands);
@@ -170,6 +168,8 @@ fn instruction_to_row<F: PrimeField32>(
                 .update_from_slice_le(&c.to_le_bytes().map(F::from_canonical_u8));
         }
     }
+
+    println!("instruction_to_row: {:?}", cols);
 
     SmallVec::from_buf(row)
 }
