@@ -911,7 +911,10 @@ fn prove_program(
     machine.set_max_trace_height(65536);
     let rom = ProgramROM::new(program);
     machine.set_program_rom(rom, program_table_type);
-    machine.set_initial_register_values(valida_cpu::Registers { pc: 1, fp: 0x1000 });
+    machine.set_initial_register_values(valida_cpu::Registers {
+        pc: 1234,
+        fp: 0x1000,
+    });
 
     let mut runtime = ValidaRuntime::default_for_field::<BabyBear>();
     let mut state = machine.start(&mut runtime);

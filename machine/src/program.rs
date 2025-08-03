@@ -263,7 +263,8 @@ impl<F> ProgramROM<F> {
 
     pub fn get_instruction(&self, pc: u32) -> &InstructionWord<F> {
         debug_assert!(pc < self.0.len() as u32, "PC out of bounds");
-        &self.0[(pc - 1) as usize]
+        // &self.0[(pc - 1234) as usize]
+        &self.0[pc as usize]
     }
 }
 

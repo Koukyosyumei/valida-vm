@@ -131,7 +131,7 @@ fn instruction_to_row<F: PrimeField32>(
     let mut row: [MaybeUninit<F>; NUM_PROGRAM_COLS] =
         unsafe { MaybeUninit::uninit().assume_init() };
     let cols: &mut ProgramCols<MaybeUninit<F>> = { unsafe { transmute(&mut row) } };
-    cols.pc.write(F::from_canonical_usize(pc + 1));
+    cols.pc.write(F::from_canonical_usize(pc));
     cols.opcode.write(F::from_canonical_u32(word.opcode));
 
     let operands = Operands::<F>::from_operands_i32(&word.operands);
