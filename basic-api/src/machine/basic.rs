@@ -3,6 +3,7 @@ use core::marker::PhantomData;
 
 use std::borrow::BorrowMut;
 use valida_cpu::columns::{CpuCols, CpuPublicVector};
+use valida_program::columns::ProgramCols;
 
 use std::fs::File;
 use std::io::Write;
@@ -1054,8 +1055,24 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
 
         // Generate public traces.
         let t_public_traces = start_timer!(|| "valida >machine.prove(..) | public_traces");
-        let public_traces = self.generate_public_traces(config, show_public, show_public_dims);
+        let mut public_traces = self.generate_public_traces(config, show_public, show_public_dims);
         end_timer!(t_public_traces);
+
+        if let Some(PublicTrace::PublicVector(initial_register_values)) = public_traces[0].as_mut()
+        {
+            // initial_pc
+            initial_register_values.0[0] = SC::Val::from_canonical_u32(2013265918);
+        }
+        if let Some(PublicTrace::PublicMatrix(program_trace)) = public_traces[1].as_mut() {
+            println!("^^^^^^^^^^^^^ Malformed Program Traces ^^^^^^^^^^^^^");
+            for i in 0..program_trace.height() {
+                let program_row = program_trace.row_mut(i);
+                let program_row: &mut ProgramCols<SC::Val> = program_row.borrow_mut();
+                program_row.pc = program_row.pc + SC::Val::from_canonical_u32(2013265918);
+                println!("{:?}", program_row);
+            }
+            println!("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
+        }
 
         // Commit to the public trace
         let (public_commit, public_data) =
@@ -1079,12 +1096,19 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
         let mut cpu_trace = &mut traces_01.0[0];
 
         if let Some(cpu_trace) = cpu_trace.as_mut() {
-            println!("========= Malformed CPU Traces =========\n");
+            println!("^^^^^^^^^^^^^^ Malformed CPU Traces ^^^^^^^^^^^^^^^^^^");
             {
                 let cpu_row = cpu_trace.row_mut(2);
                 let cpu_row: &mut CpuCols<SC::Val> = cpu_row.borrow_mut();
                 cpu_row.opcode_flags.is_stop = SC::Val::from_canonical_u32(1234);
             }
+            for i in 0..cpu_trace.height() {
+                let cpu_row = cpu_trace.row_mut(i);
+                let cpu_row: &mut CpuCols<SC::Val> = cpu_row.borrow_mut();
+                cpu_row.pc = cpu_row.pc + SC::Val::from_canonical_u32(2013265918);
+                println!("{:?}", cpu_row);
+            }
+            println!("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
         }
 
         let has_main_traces = has_traces(&main_traces);
@@ -1369,11 +1393,24 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
         let g_subgroups = compute_g_subgroups::<F, SC>(&proof.chip_proofs);
 
         // Generate public traces
-        let public_traces: [Option<PublicTrace<SC::Val>>; NUM_CHIPS] = instance_data
+        let mut public_traces: [Option<PublicTrace<SC::Val>>; NUM_CHIPS] = instance_data
             .public_traces(show_public)[0]
             .clone()
             .try_into()
             .unwrap();
+
+        if let Some(PublicTrace::PublicVector(initial_register_values)) = public_traces[0].as_mut()
+        {
+            // initial_pc
+            initial_register_values.0[0] = SC::Val::from_canonical_u32(2013265918);
+        }
+        if let Some(PublicTrace::PublicMatrix(program_trace)) = public_traces[1].as_mut() {
+            for i in 0..program_trace.height() {
+                let program_row = program_trace.row_mut(i);
+                let program_row: &mut ProgramCols<SC::Val> = program_row.borrow_mut();
+                program_row.pc = program_row.pc + SC::Val::from_canonical_u32(2013265918);
+            }
+        }
 
         // Commit to the public trace to get the public commitment
         let (public_commit, _) =

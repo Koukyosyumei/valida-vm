@@ -184,7 +184,7 @@ pub fn rom_to_table<F: PrimeField32>(
         .0
         .par_iter()
         .enumerate()
-        .map(|(i, instr)| instruction_to_row((i + 2013265918, instr)))
+        .map(instruction_to_row)
         .flat_map(|row| row.to_vec())
         .collect::<Vec<_>>();
 
