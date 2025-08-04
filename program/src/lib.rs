@@ -133,7 +133,7 @@ fn instruction_to_row<F: PrimeField32>(
     let mut row: [MaybeUninit<F>; NUM_PROGRAM_COLS] =
         unsafe { MaybeUninit::uninit().assume_init() };
     let cols: &mut ProgramCols<MaybeUninit<F>> = { unsafe { transmute(&mut row) } };
-    cols.pc.write(F::from_canonical_usize(pc + 2013265918));
+    cols.pc.write(F::from_canonical_usize(pc));
     cols.opcode.write(F::from_canonical_u32(word.opcode));
 
     let operands = Operands::<F>::from_operands_i32(&word.operands);
@@ -152,17 +152,6 @@ fn instruction_to_row<F: PrimeField32>(
     // SAFETY: at this point, every entry of row is initialized
     let mut row = unsafe { row.map(|x| x.assume_init()) };
     let cols: &mut ProgramCols<F> = row[..].borrow_mut();
-    if cols.opcode == F::from_canonical_u16(7) {
-        if cols.operands.0[0] == F::from_canonical_u16(4) {
-            cols.pc = F::from_canonical_u64(2013265918);
-        } else {
-            cols.pc = F::from_canonical_u64(2013265919);
-        }
-    } else if cols.opcode == F::from_canonical_u16(100) {
-        cols.pc = F::from_canonical_u64(2013265920);
-    } else {
-        cols.pc = F::from_canonical_u64(0);
-    }
 
     // Load the immediate values bytewise into the four extra columns in the lookup, and reduce the
     // corresponding operand modulo the order of F.
@@ -195,7 +184,7 @@ pub fn rom_to_table<F: PrimeField32>(
         .0
         .par_iter()
         .enumerate()
-        .map(instruction_to_row)
+        .map(|(i, instr)| instruction_to_row((i + 2013265918, instr)))
         .flat_map(|row| row.to_vec())
         .collect::<Vec<_>>();
 
