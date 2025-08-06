@@ -1088,6 +1088,20 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
         let mut mem_trace = &mut traces_23.0[0];
         let mut traces_34 = &mut traces_23.1.split_at_mut(1);
         let mut add_trace = &mut traces_34.0[0];
+        let mut byte_trace = &mut traces_34.1[8];
+
+        if let Some(byte_trace) = byte_trace.as_mut() {
+            {
+                byte_trace.values[0] = SC::Val::from_canonical_u16(23);
+                byte_trace.values[9] = SC::Val::from_canonical_u16(12);
+                byte_trace.values[20] = SC::Val::from_canonical_u16(3);
+                byte_trace.values[40] = SC::Val::from_canonical_u16(1);
+                byte_trace.values[300] = SC::Val::from_canonical_u16(6);
+                byte_trace.values[4960] = SC::Val::from_canonical_u16(3);
+                byte_trace.values[5040] = SC::Val::from_canonical_u16(3);
+            }
+        }
+        println!("byte_trace: {:?}", byte_trace);
 
         if let Some(cpu_trace) = cpu_trace.as_mut() {
             let mut new_cpu_trace = RowMajorMatrix::new(
@@ -1140,8 +1154,14 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
             *mem_trace = new_mem_trace;
 
             {
+                let mem_row = mem_trace.row_mut(1);
+                let mem_row: &mut MemoryCols<SC::Val> = mem_row.borrow_mut();
+                mem_row.is_final = SC::Val::one();
+            }
+            {
                 let mem_row = mem_trace.row_mut(2);
                 let mem_row: &mut MemoryCols<SC::Val> = mem_row.borrow_mut();
+                mem_row.is_final = SC::Val::one();
                 mem_row.addr_equal = SC::Val::zero();
                 mem_row.diff_bytes.0[0] = SC::Val::from_canonical_u32(4);
                 mem_row.diff = SC::Val::from_canonical_u32(4);
