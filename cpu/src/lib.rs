@@ -474,7 +474,7 @@ impl CpuChip {
                 self.set_imm_value(cols, *imm);
             }
             Operation::Bne(imm) => {
-                cols.opcode_flags.is_bne = SC::Val::one();
+                //cols.opcode_flags.is_bne = SC::Val::one();
                 self.set_imm_value(cols, *imm);
             }
             Operation::Imm32 => {
@@ -1098,11 +1098,11 @@ where
         if state.machine.log_enabled() {
             state.machine.push_op(Operation::Bne(imm), opcode, ops);
         }
-        if cell_1 != cell_2 {
-            state.machine.set_pc((ops.a() as u32) / BYTES_PER_INSTR);
-        } else {
-            state.machine.step_pc();
-        }
+        //if cell_1 != cell_2 {
+        //    state.machine.set_pc((ops.a() as u32) / BYTES_PER_INSTR);
+        //} else {
+        state.machine.step_pc();
+        //}
     }
 }
 

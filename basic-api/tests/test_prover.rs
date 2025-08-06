@@ -47,6 +47,32 @@ use valida_machine::__internal::p3_commit::ExtensionMmcs;
 mod common;
 use common::*;
 
+fn bne_program<Val: StarkField>() -> Vec<InstructionWord<i32>> {
+    let bytes_per_instr = BYTES_PER_INSTR as i32;
+
+    let mut program = vec![];
+    program.extend([
+        InstructionWord {
+            opcode: <Imm32Instruction as Instruction<BasicMachine<Val>, Val>>::OPCODE,
+            operands: Operands([-4, 2, 0, 0, 0]),
+        },
+        InstructionWord {
+            opcode: <Add32Instruction as Instruction<BasicMachine<Val>, Val>>::OPCODE,
+            operands: Operands([-8, -8, 1, 0, 1]),
+        },
+        InstructionWord {
+            opcode: <BneInstruction as Instruction<BasicMachine<Val>, Val>>::OPCODE,
+            operands: Operands([1 * bytes_per_instr, -8, -4, 0, 0]),
+        },
+        InstructionWord {
+            opcode: <StopInstruction as Instruction<BasicMachine<Val>, Val>>::OPCODE,
+            operands: Operands::default(),
+        },
+    ]);
+
+    program
+}
+
 fn div_program<Val: StarkField>() -> Vec<InstructionWord<i32>> {
     let mut program = vec![];
 
@@ -1041,6 +1067,13 @@ fn expected_sdiv_memory_state(memory_backend: &ValidaMemoryBackend) {
         memory_backend.get_value(0x1000 + 40),
         Word::from(0) // 0 / -3 = 0
     );
+}
+
+#[test]
+fn prove_bne() {
+    let program = bne_program::<BabyBear>();
+    let (_machine, _memory_backend) = prove_program(program, ProgramTableType::Public);
+    assert!(false, "Verification should fail.");
 }
 
 #[test]
