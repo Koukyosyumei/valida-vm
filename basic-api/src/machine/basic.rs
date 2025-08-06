@@ -2,6 +2,7 @@
 use core::marker::PhantomData;
 
 use std::borrow::BorrowMut;
+use valida_alu_u32::add::columns::{Add32Cols, NUM_ADD_COLS};
 use valida_cpu::columns::{CpuCols, CpuPublicVector, NUM_CPU_COLS};
 use valida_memory::columns::NUM_MEM_COLS;
 
@@ -595,6 +596,9 @@ where
 fn verify_cumulative_sums<SC: StarkConfig>(
     proof: &MachineProof<SC>,
 ) -> Result<(), VerificationError<SC>> {
+    for cp in &proof.chip_proofs {
+        println!("{:?}", cp.cumulative_ephemeral_sum);
+    }
     // Verify ephemeral sums
     let ephemeral_sum: SC::Challenge = proof
         .chip_proofs
@@ -1110,10 +1114,15 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
                 cpu_row.is_last_segment = SC::Val::one();
                 cpu_row.is_real = SC::Val::one();
             }
+
+            for i in 0..cpu_trace.height() {
+                let cpu_row = cpu_trace.row_mut(i);
+                let cpu_row: &mut CpuCols<SC::Val> = cpu_row.borrow_mut();
+                println!("malformed cpu trace: {:?}", cpu_row);
+            }
         }
 
         if let Some(mem_trace) = mem_trace.as_mut() {
-            println!("mem_trace: {:?}", mem_trace);
             let mut new_vecs = vec![
                 mem_trace.row_mut(0).to_vec(),
                 mem_trace.row_mut(1).to_vec(),
@@ -1139,8 +1148,6 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
                 mem_row.diff_inv = SC::Val::from_canonical_u32(1509949441);
             }
 
-            // diff: 4, diff_inv: 1509949441
-
             {
                 let mem_row = mem_trace.row_mut(5);
                 let mem_row: &mut MemoryCols<SC::Val> = mem_row.borrow_mut();
@@ -1148,6 +1155,27 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
                 mem_row.diff_bytes.0[0] = SC::Val::one();
                 mem_row.diff_inv = SC::Val::one();
                 mem_row.addr_equal = SC::Val::zero();
+            }
+
+            for i in 0..mem_trace.height() {
+                let mem_row = mem_trace.row_mut(i);
+                let mem_row: &mut MemoryCols<SC::Val> = mem_row.borrow_mut();
+                println!("malformed mem trace: {:?}", mem_row);
+            }
+        }
+
+        if let Some(add_trace) = add_trace.as_mut() {
+            let mut new_vecs = vec![add_trace.row_mut(0).to_vec()]
+                .into_iter()
+                .flatten()
+                .collect();
+            let mut new_add_trace = RowMajorMatrix::new(new_vecs, NUM_ADD_COLS);
+            *add_trace = new_add_trace;
+
+            for i in 0..add_trace.height() {
+                let add_row = add_trace.row_mut(i);
+                let add_row: &mut Add32Cols<SC::Val> = add_row.borrow_mut();
+                println!("malformed add trace: {:?}", add_row);
             }
         }
 
