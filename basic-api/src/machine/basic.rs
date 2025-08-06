@@ -1,6 +1,10 @@
 #![feature(trait_upcasting)]
 use core::marker::PhantomData;
 
+use std::borrow::BorrowMut;
+use valida_cpu::columns::{CpuCols, CpuPublicVector, NUM_CPU_COLS};
+use valida_memory::columns::NUM_MEM_COLS;
+
 use std::fs::File;
 use std::io::Write;
 use std::ops::RangeInclusive;
@@ -1069,8 +1073,131 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
 
         // Generate main traces.
         let t_main_traces = start_timer!(|| "valida >machine.prove(..) | main_traces");
-        let main_traces = self.generate_main_traces(config, show_main, show_main_dims);
+        let mut main_traces = self.generate_main_traces(config, show_main, show_main_dims);
         end_timer!(t_main_traces);
+
+        let mut traces_01 = &mut main_traces.split_at_mut(1);
+        let mut cpu_trace = &mut traces_01.0[0];
+        let mut traces_12 = &mut traces_01.1.split_at_mut(1);
+        let mut _program_trace = &mut traces_12.0[0];
+        let mut traces_23 = &mut traces_12.1.split_at_mut(1);
+        let mut mem_trace = &mut traces_23.0[0];
+        let mut traces_34 = &mut traces_23.1.split_at_mut(1);
+        let mut add_trace = &mut traces_34.0[0];
+
+        if let Some(cpu_trace) = cpu_trace.as_mut() {
+            let mut new_cpu_trace = RowMajorMatrix::new(
+                cpu_trace.values.split_at_mut(NUM_CPU_COLS * 4).0.to_vec(),
+                NUM_CPU_COLS,
+            );
+            *cpu_trace = new_cpu_trace;
+            {
+                let cpu_row = cpu_trace.row_mut(2);
+                let cpu_row: &mut CpuCols<SC::Val> = cpu_row.borrow_mut();
+                cpu_row.opcode_flags.is_beq = SC::Val::zero();
+            }
+            {
+                let cpu_row = cpu_trace.row_mut(3);
+                for i in 0..NUM_CPU_COLS {
+                    cpu_row[i] = SC::Val::zero();
+                }
+                let cpu_row: &mut CpuCols<SC::Val> = cpu_row.borrow_mut();
+                cpu_row.clk = SC::Val::from_canonical_u32(3);
+                cpu_row.pc = SC::Val::from_canonical_u32(3);
+                cpu_row.fp = SC::Val::from_canonical_u32(4096);
+                cpu_row.instruction.opcode = SC::Val::from_canonical_u32(8);
+                cpu_row.opcode_flags.is_stop = SC::Val::one();
+                cpu_row.is_last_segment = SC::Val::one();
+                cpu_row.is_real = SC::Val::one();
+            }
+        }
+
+        if let Some(mem_trace) = mem_trace.as_mut() {
+            println!("mem_trace: {:?}", mem_trace);
+            let mut new_vecs = vec![
+                mem_trace.row_mut(0).to_vec(),
+                mem_trace.row_mut(1).to_vec(),
+                mem_trace.row_mut(2).to_vec(),
+                mem_trace.row_mut(6).to_vec(),
+                mem_trace.row_mut(7).to_vec(),
+                mem_trace.row_mut(8).to_vec(),
+                (0..NUM_MEM_COLS).map(|_| SC::Val::zero()).collect(),
+                (0..NUM_MEM_COLS).map(|_| SC::Val::zero()).collect(),
+            ]
+            .into_iter()
+            .flatten()
+            .collect();
+            let mut new_mem_trace = RowMajorMatrix::new(new_vecs, NUM_MEM_COLS);
+            *mem_trace = new_mem_trace;
+
+            {
+                let mem_row = mem_trace.row_mut(2);
+                let mem_row: &mut MemoryCols<SC::Val> = mem_row.borrow_mut();
+                mem_row.addr_equal = SC::Val::zero();
+                mem_row.diff_bytes.0[0] = SC::Val::from_canonical_u32(4);
+                mem_row.diff = SC::Val::from_canonical_u32(4);
+                mem_row.diff_inv = SC::Val::from_canonical_u32(1509949441);
+            }
+
+            // diff: 4, diff_inv: 1509949441
+
+            {
+                let mem_row = mem_trace.row_mut(5);
+                let mem_row: &mut MemoryCols<SC::Val> = mem_row.borrow_mut();
+                mem_row.diff = SC::Val::one();
+                mem_row.diff_bytes.0[0] = SC::Val::one();
+                mem_row.diff_inv = SC::Val::one();
+                mem_row.addr_equal = SC::Val::zero();
+            }
+        }
+
+        /*
+        Main trace for Chip: CPU
+        --------------------------------------------------------------------------------
+        CPU row 0: CpuCols { clk: 0, pc: 0, fp: 4096, instruction: InstructionCols { opcode: 7, operands: Operands([2013265917, 3, 0, 0, 0]) }, opcode_flags: OpcodeFlagCols { is_bus_op: 0, is_pointer_op: 0, is_imm_op: 0, is_left_imm_op: 0, is_load: 0, is_load_u8: 0, is_load_s8: 0, is_store: 0, is_store_u8: 0, is_beq: 0, is_bne: 0, is_jal: 0, is_jalv: 0, is_imm32: 1, is_advice: 0, is_stop: 0, is_loadfp: 0, is_write: 0 }, diff: 0, diff_inv: 0, not_equal: 0, mem_read_channels: [ReadChannelCols { used: 0, addr: 0, value: Word([0, 0, 0, 0]) }, ReadChannelCols { used: 0, addr: 0, value: Word([0, 0, 0, 0]) }], mem_write_channels: [WriteChannelCols { used: 1, addr: 4092, value: Word([3, 0, 0, 0]), old_value: Word([0, 0, 0, 0]) }], addr_offset_flags: Word([0, 0, 0, 0]), sign_bit: 0, is_last_segment: 1, is_real: 1 }
+        CPU row 1: CpuCols { clk: 1, pc: 1, fp: 4096, instruction: InstructionCols { opcode: 100, operands: Operands([2013265913, 2013265913, 1, 0, 1]) }, opcode_flags: OpcodeFlagCols { is_bus_op: 1, is_pointer_op: 0, is_imm_op: 1, is_left_imm_op: 0, is_load: 0, is_load_u8: 0, is_load_s8: 0, is_store: 0, is_store_u8: 0, is_beq: 0, is_bne: 0, is_jal: 0, is_jalv: 0, is_imm32: 0, is_advice: 0, is_stop: 0, is_loadfp: 0, is_write: 0 }, diff: 1, diff_inv: 1, not_equal: 1, mem_read_channels: [ReadChannelCols { used: 1, addr: 4088, value: Word([0, 0, 0, 0]) }, ReadChannelCols { used: 0, addr: 0, value: Word([1, 0, 0, 0]) }], mem_write_channels: [WriteChannelCols { used: 1, addr: 4088, value: Word([1, 0, 0, 0]), old_value: Word([0, 0, 0, 0]) }], addr_offset_flags: Word([0, 0, 0, 0]), sign_bit: 0, is_last_segment: 1, is_real: 1 }
+        CPU row 2: CpuCols { clk: 2, pc: 2, fp: 4096, instruction: InstructionCols { opcode: 5, operands: Operands([24, 2013265913, 2013265917, 0, 0]) }, opcode_flags: OpcodeFlagCols { is_bus_op: 0, is_pointer_op: 0, is_imm_op: 0, is_left_imm_op: 0, is_load: 0, is_load_u8: 0, is_load_s8: 0, is_store: 0, is_store_u8: 0, is_beq: 1, is_bne: 0, is_jal: 0, is_jalv: 0, is_imm32: 0, is_advice: 0, is_stop: 0, is_loadfp: 0, is_write: 0 }, diff: 4, diff_inv: 1509949441, not_equal: 1, mem_read_channels: [ReadChannelCols { used: 1, addr: 4088, value: Word([1, 0, 0, 0]) }, ReadChannelCols { used: 1, addr: 4092, value: Word([3, 0, 0, 0]) }], mem_write_channels: [WriteChannelCols { used: 0, addr: 0, value: Word([0, 0, 0, 0]), old_value: Word([0, 0, 0, 0]) }], addr_offset_flags: Word([0, 0, 0, 0]), sign_bit: 0, is_last_segment: 1, is_real: 1 }
+        CPU row 3: CpuCols { clk: 3, pc: 3, fp: 4096, instruction: InstructionCols { opcode: 8, operands: Operands([0, 0, 0, 0, 0]) }, opcode_flags: OpcodeFlagCols { is_bus_op: 0, is_pointer_op: 0, is_imm_op: 0, is_left_imm_op: 0, is_load: 0, is_load_u8: 0, is_load_s8: 0, is_store: 0, is_store_u8: 0, is_beq: 0, is_bne: 0, is_jal: 0, is_jalv: 0, is_imm32: 0, is_advice: 0, is_stop: 1, is_loadfp: 0, is_write: 0 }, diff: 0, diff_inv: 0, not_equal: 0, mem_read_channels: [ReadChannelCols { used: 0, addr: 0, value: Word([0, 0, 0, 0]) }, ReadChannelCols { used: 0, addr: 0, value: Word([0, 0, 0, 0]) }], mem_write_channels: [WriteChannelCols { used: 0, addr: 0, value: Word([0, 0, 0, 0]), old_value: Word([0, 0, 0, 0]) }], addr_offset_flags: Word([0, 0, 0, 0]), sign_bit: 0, is_last_segment: 1, is_real: 1 }
+        Main trace dimensions for Chip: CPU
+        --------------------------------------------------------------------------------
+        59 columns and 4 rows
+        236 total cells
+        --------------------------------------------------------------------------------
+        Main trace for Chip: LookupChip for Public Program Table
+        --------------------------------------------------------------------------------
+        Main trace dimensions for Chip: LookupChip for Public Program Table
+        --------------------------------------------------------------------------------
+        1 columns and 4 rows
+        4 total cells
+        --------------------------------------------------------------------------------
+        Main trace for Chip: Memory
+        --------------------------------------------------------------------------------
+        Memory row 0: MemoryCols { addr: 4088, addr_bytes: Word([248, 15, 0, 0]), value: Word([0, 0, 0, 0]), clk: 1, diff_bytes: Word([0, 0, 0, 0]), is_dummy_read: 0, is_read: 1, is_write: 0, diff: 0, diff_inv: 0, addr_equal: 1, is_initial: 1, prior_timestamp: 0, is_zero_initialized: 1, is_final: 0, is_static_write: 0, skip_persistent_send: 1, skip_persistent_receive: 0 }
+        Memory row 1: MemoryCols { addr: 4088, addr_bytes: Word([248, 15, 0, 0]), value: Word([1, 0, 0, 0]), clk: 1, diff_bytes: Word([1, 0, 0, 0]), is_dummy_read: 0, is_read: 0, is_write: 1, diff: 1, diff_inv: 1, addr_equal: 1, is_initial: 0, prior_timestamp: 1, is_zero_initialized: 0, is_final: 1, is_static_write: 0, skip_persistent_send: 1, skip_persistent_receive: 0 }
+        Memory row 2: MemoryCols { addr: 4088, addr_bytes: Word([248, 15, 0, 0]), value: Word([1, 0, 0, 0]), clk: 2, diff_bytes: Word([4, 0, 0, 0]), is_dummy_read: 0, is_read: 1, is_write: 0, diff: 4, diff_inv: 1509949441, addr_equal: 0, is_initial: 0, prior_timestamp: 1, is_zero_initialized: 0, is_final: 1, is_static_write: 0, skip_persistent_send: 1, skip_persistent_receive: 0 }
+        Memory row 3: MemoryCols { addr: 4092, addr_bytes: Word([252, 15, 0, 0]), value: Word([0, 0, 0, 0]), clk: 0, diff_bytes: Word([0, 0, 0, 0]), is_dummy_read: 1, is_read: 0, is_write: 0, diff: 0, diff_inv: 0, addr_equal: 1, is_initial: 1, prior_timestamp: 0, is_zero_initialized: 1, is_final: 0, is_static_write: 0, skip_persistent_send: 1, skip_persistent_receive: 0 }
+        Memory row 4: MemoryCols { addr: 4092, addr_bytes: Word([252, 15, 0, 0]), value: Word([3, 0, 0, 0]), clk: 0, diff_bytes: Word([2, 0, 0, 0]), is_dummy_read: 0, is_read: 0, is_write: 1, diff: 2, diff_inv: 1006632961, addr_equal: 1, is_initial: 0, prior_timestamp: 1, is_zero_initialized: 0, is_final: 1, is_static_write: 0, skip_persistent_send: 1, skip_persistent_receive: 0 }
+        Memory row 5: MemoryCols { addr: 4092, addr_bytes: Word([252, 15, 0, 0]), value: Word([3, 0, 0, 0]), clk: 2, diff_bytes: Word([1, 0, 0, 0]), is_dummy_read: 0, is_read: 1, is_write: 0, diff: 1, diff_inv: 1, addr_equal: 0, is_initial: 0, prior_timestamp: 1, is_zero_initialized: 0, is_final: 1, is_static_write: 0, skip_persistent_send: 1, skip_persistent_receive: 0 }
+        Main trace dimensions for Chip: Memory
+        --------------------------------------------------------------------------------
+        27 columns and 8 rows
+        216 total cells
+        --------------------------------------------------------------------------------
+        Main trace for Chip: Add32
+        --------------------------------------------------------------------------------
+        Add32 row 0: Add32Cols { input_1: Word([0, 0, 0, 0]), input_2: Word([1, 0, 0, 0]), carry: [0, 0, 0], output: Word([1, 0, 0, 0]), is_real: 1 }
+        Main trace dimensions for Chip: Add32
+        --------------------------------------------------------------------------------
+        */
+
+        /*
+        Memory row 0: MemoryCols { addr: 4088, addr_bytes: Word([248, 15, 0, 0]), value: Word([0, 0, 0, 0]), clk: 1, diff_bytes: Word([0, 0, 0, 0]), is_dummy_read: 0, is_read: 1, is_write: 0, diff: 0, diff_inv: 0, addr_equal: 1, is_initial: 1, prior_timestamp: 0, is_zero_initialized: 1, is_final: 0, is_static_write: 0, skip_persistent_send: 1, skip_persistent_receive: 0 }
+        Memory row 1: MemoryCols { addr: 4088, addr_bytes: Word([248, 15, 0, 0]), value: Word([1, 0, 0, 0]), clk: 1, diff_bytes: Word([1, 0, 0, 0]), is_dummy_read: 0, is_read: 0, is_write: 1, diff: 1, diff_inv: 1, addr_equal: 1, is_initial: 0, prior_timestamp: 1, is_zero_initialized: 0, is_final: 0, is_static_write: 0, skip_persistent_send: 1, skip_persistent_receive: 0 }
+        Memory row 2: MemoryCols { addr: 4088, addr_bytes: Word([248, 15, 0, 0]), value: Word([1, 0, 0, 0]), clk: 2, diff_bytes: Word([1, 0, 0, 0]), is_dummy_read: 0, is_read: 1, is_write: 0, diff: 1, diff_inv: 1, addr_equal: 1, is_initial: 0, prior_timestamp: 1, is_zero_initialized: 0, is_final: 0, is_static_write: 0, skip_persistent_send: 1, skip_persistent_receive: 0 }
+        Memory row 6: MemoryCols { addr: 4092, addr_bytes: Word([252, 15, 0, 0]), value: Word([0, 0, 0, 0]), clk: 0, diff_bytes: Word([0, 0, 0, 0]), is_dummy_read: 1, is_read: 0, is_write: 0, diff: 0, diff_inv: 0, addr_equal: 1, is_initial: 1, prior_timestamp: 0, is_zero_initialized: 1, is_final: 0, is_static_write: 0, skip_persistent_send: 1, skip_persistent_receive: 0 }
+        Memory row 7: MemoryCols { addr: 4092, addr_bytes: Word([252, 15, 0, 0]), value: Word([1, 0, 0, 0]), clk: 0, diff_bytes: Word([2, 0, 0, 0]), is_dummy_read: 0, is_read: 0, is_write: 1, diff: 2, diff_inv: 1006632961, addr_equal: 1, is_initial: 0, prior_timestamp: 1, is_zero_initialized: 0, is_final: 1, is_static_write: 0, skip_persistent_send: 1, skip_persistent_receive: 0 }
+        Memory row 8: MemoryCols { addr: 4092, addr_bytes: Word([252, 15, 0, 0]), value: Word([1, 0, 0, 0]), clk: 2, diff_bytes: Word([2, 0, 0, 0]), is_dummy_read: 0, is_read: 1, is_write: 0, diff: 2, diff_inv: 1006632961, addr_equal: 1, is_initial: 0, prior_timestamp: 1, is_zero_initialized: 0, is_final: 1, is_static_write: 0, skip_persistent_send: 1, skip_persistent_receive: 0 }
+                         */
 
         let has_main_traces = has_traces(&main_traces);
 
