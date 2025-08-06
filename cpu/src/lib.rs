@@ -470,7 +470,7 @@ impl CpuChip {
                 cols.opcode_flags.is_jalv = SC::Val::one();
             }
             Operation::Beq(imm) => {
-                //cols.opcode_flags.is_beq = SC::Val::one();
+                cols.opcode_flags.is_bne = SC::Val::one();
                 self.set_imm_value(cols, *imm);
             }
             Operation::Bne(imm) => {
