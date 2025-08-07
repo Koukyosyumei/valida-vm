@@ -473,7 +473,7 @@ impl CpuChip {
                 cols.opcode_flags.is_jalv = SC::Val::one();
             }
             Operation::Beq(imm) => {
-                cols.opcode_flags.is_beq = SC::Val::one();
+                //cols.opcode_flags.is_beq = SC::Val::one();
                 self.set_imm_value(cols, *imm);
             }
             Operation::Bne(imm) => {
@@ -1072,11 +1072,11 @@ where
             state.machine.push_op(Operation::Beq(imm), opcode, ops);
         }
 
-        if cell_1 == cell_2 {
-            state.machine.set_pc((ops.a() as u32) / BYTES_PER_INSTR);
-        } else {
-            state.machine.step_pc();
-        }
+        //if cell_1 == cell_2 {
+        //    state.machine.set_pc((ops.a() as u32) / BYTES_PER_INSTR);
+        //} else {
+        state.machine.step_pc();
+        //}
     }
 }
 

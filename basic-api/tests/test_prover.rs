@@ -1043,6 +1043,39 @@ fn expected_sdiv_memory_state(memory_backend: &ValidaMemoryBackend) {
     );
 }
 
+fn beq_program<Val: StarkField>() -> Vec<InstructionWord<i32>> {
+    let bytes_per_instr = BYTES_PER_INSTR as i32;
+
+    let mut program = vec![];
+    program.extend([
+        InstructionWord {
+            opcode: <Imm32Instruction as Instruction<BasicMachine<Val>, Val>>::OPCODE,
+            operands: Operands([-4, 1, 0, 0, 0]),
+        },
+        InstructionWord {
+            opcode: <Add32Instruction as Instruction<BasicMachine<Val>, Val>>::OPCODE,
+            operands: Operands([-8, -8, 1, 0, 1]),
+        },
+        InstructionWord {
+            opcode: <BeqInstruction as Instruction<BasicMachine<Val>, Val>>::OPCODE,
+            operands: Operands([1 * bytes_per_instr, -8, -4, 0, 0]),
+        },
+        InstructionWord {
+            opcode: <StopInstruction as Instruction<BasicMachine<Val>, Val>>::OPCODE,
+            operands: Operands::default(),
+        },
+    ]);
+
+    program
+}
+
+#[test]
+fn prove_beq() {
+    let program = beq_program::<BabyBear>();
+    let (_machine, _memory_backend) = prove_program(program, ProgramTableType::Public);
+    assert!(false, "Verification should fail.");
+}
+
 #[test]
 fn prove_sdiv() {
     let program = sdiv_program::<BabyBear>();
