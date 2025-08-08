@@ -83,8 +83,6 @@ where
                 * (AB::Expr::from_canonical_u32(CpuOperation::Pointer as u32 + 1))
                 + local.opcode_flags.is_load
                     * (AB::Expr::from_canonical_u32(CpuOperation::Load32 as u32 + 1))
-                + local.opcode_flags.is_load
-                    * (AB::Expr::from_canonical_u32(CpuOperation::Load32 as u32 + 1))
                 + local.opcode_flags.is_load_u8
                     * (AB::Expr::from_canonical_u32(CpuOperation::LoadU8 as u32 + 1))
                 + local.opcode_flags.is_load_s8
