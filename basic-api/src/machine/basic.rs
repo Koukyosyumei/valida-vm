@@ -1058,6 +1058,7 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
         let mut public_traces = self.generate_public_traces(config, show_public, show_public_dims);
         end_timer!(t_public_traces);
 
+        /*
         if let Some(PublicTrace::PublicVector(initial_register_values)) = public_traces[0].as_mut()
         {
             // initial_pc
@@ -1073,6 +1074,7 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
             }
             println!("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
         }
+         */
 
         // Commit to the public trace
         let (public_commit, public_data) =
@@ -1095,6 +1097,7 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
         let mut traces_01 = &mut main_traces.split_at_mut(1);
         let mut cpu_trace = &mut traces_01.0[0];
 
+        /*
         if let Some(cpu_trace) = cpu_trace.as_mut() {
             let mut cpu_trace_vec = cpu_trace.values.to_vec();
             cpu_trace_vec = cpu_trace_vec
@@ -1127,7 +1130,7 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
             }
             *cpu_trace = new_cpu_trace;
             println!("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
-        }
+        }*/
 
         let has_main_traces = has_traces(&main_traces);
 
@@ -1417,6 +1420,7 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
             .try_into()
             .unwrap();
 
+        /*
         if let Some(PublicTrace::PublicVector(initial_register_values)) = public_traces[0].as_mut()
         {
             // initial_pc
@@ -1429,6 +1433,7 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
                 program_row.pc = program_row.pc + SC::Val::from_canonical_u32(2013265918);
             }
         }
+         */
 
         // Commit to the public trace to get the public commitment
         let (public_commit, _) =
@@ -1617,6 +1622,7 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
             StoppingFlag::DidStop
         } else if opcode == <Add32Instruction as Instruction<Self, F>>::OPCODE {
             StoppingFlag::DidStop
+            //StoppingFlag::DidNotStop
         } else if opcode == <FailInstruction as Instruction<Self, F>>::OPCODE {
             StoppingFlag::DidFail
         } else if state.machine.current_trace_height() >= state.machine.max_trace_height() {
