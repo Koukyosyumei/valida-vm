@@ -53,19 +53,19 @@ fn add_program<Val: StarkField>() -> Vec<InstructionWord<i32>> {
     program.extend([
         InstructionWord {
             opcode: <Imm32Instruction as Instruction<BasicMachine<Val>, Val>>::OPCODE,
-            operands: Operands([4, 0, 0, 0, 0]),
+            operands: Operands([-4, 1, 0, 0, 0]),
         },
         InstructionWord {
             opcode: <Imm32Instruction as Instruction<BasicMachine<Val>, Val>>::OPCODE,
-            operands: Operands([0, 0, 0, 0, 0]),
+            operands: Operands([-8, 2, 0, 0, 0]),
         },
         InstructionWord {
             opcode: <Add32Instruction as Instruction<BasicMachine<Val>, Val>>::OPCODE,
-            operands: Operands([16, 0, 0, 0, 1]),
+            operands: Operands([-12, -8, -4, 0, 0]),
         },
         InstructionWord {
             opcode: <Sub32Instruction as Instruction<BasicMachine<Val>, Val>>::OPCODE,
-            operands: Operands([16, 0, 0, 0, 1]),
+            operands: Operands([-12, -12, -4, 0, 0]),
         },
         InstructionWord {
             opcode: <StopInstruction as Instruction<BasicMachine<Val>, Val>>::OPCODE,
