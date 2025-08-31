@@ -2,7 +2,7 @@
 use core::marker::PhantomData;
 
 use std::borrow::BorrowMut;
-use valida_cpu::columns::{CpuCols, CpuPublicVector};
+use valida_cpu::columns::{CpuCols, CpuPublicVector, NUM_CPU_COLS};
 use valida_program::columns::ProgramCols;
 
 use std::fs::File;
@@ -1096,18 +1096,36 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
         let mut cpu_trace = &mut traces_01.0[0];
 
         if let Some(cpu_trace) = cpu_trace.as_mut() {
+            let mut cpu_trace_vec = cpu_trace.values.to_vec();
+            cpu_trace_vec = cpu_trace_vec
+                .iter()
+                .take(NUM_CPU_COLS * 4)
+                .map(|v| v.clone())
+                .collect();
+            let mut new_cpu_trace = RowMajorMatrix::new(cpu_trace_vec, NUM_CPU_COLS);
             println!("^^^^^^^^^^^^^^ Malformed CPU Traces ^^^^^^^^^^^^^^^^^^");
             {
-                let cpu_row = cpu_trace.row_mut(2);
+                let cpu_row = new_cpu_trace.row_mut(2);
                 let cpu_row: &mut CpuCols<SC::Val> = cpu_row.borrow_mut();
-                cpu_row.opcode_flags.is_stop = SC::Val::from_canonical_u32(1234);
+                cpu_row.opcode_flags.is_stop = SC::Val::from_canonical_u32(1);
             }
-            for i in 0..cpu_trace.height() {
-                let cpu_row = cpu_trace.row_mut(i);
+            for i in 0..new_cpu_trace.height() {
+                let cpu_row = new_cpu_trace.row_mut(i);
                 let cpu_row: &mut CpuCols<SC::Val> = cpu_row.borrow_mut();
                 cpu_row.pc = cpu_row.pc + SC::Val::from_canonical_u32(2013265918);
+            }
+            {
+                let cpu_row = new_cpu_trace.row_mut(new_cpu_trace.height() - 1);
+                for j in 0..NUM_CPU_COLS {
+                    cpu_row[j] = SC::Val::zero();
+                }
+            }
+            for i in 0..new_cpu_trace.height() {
+                let cpu_row = new_cpu_trace.row_mut(i);
+                let cpu_row: &mut CpuCols<SC::Val> = cpu_row.borrow_mut();
                 println!("{:?}", cpu_row);
             }
+            *cpu_trace = new_cpu_trace;
             println!("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
         }
 
@@ -1596,6 +1614,8 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
 
         // A STOP instruction signals the end of the program
         if opcode == <StopInstruction as Instruction<Self, F>>::OPCODE {
+            StoppingFlag::DidStop
+        } else if opcode == <Add32Instruction as Instruction<Self, F>>::OPCODE {
             StoppingFlag::DidStop
         } else if opcode == <FailInstruction as Instruction<Self, F>>::OPCODE {
             StoppingFlag::DidFail
