@@ -64,6 +64,10 @@ fn add_program<Val: StarkField>() -> Vec<InstructionWord<i32>> {
             operands: Operands([16, 0, 0, 0, 1]),
         },
         InstructionWord {
+            opcode: <Sub32Instruction as Instruction<BasicMachine<Val>, Val>>::OPCODE,
+            operands: Operands([16, 0, 0, 0, 1]),
+        },
+        InstructionWord {
             opcode: <StopInstruction as Instruction<BasicMachine<Val>, Val>>::OPCODE,
             operands: Operands::default(),
         },
