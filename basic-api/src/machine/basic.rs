@@ -1545,6 +1545,8 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
         // A STOP instruction signals the end of the program
         if opcode == <StopInstruction as Instruction<Self, F>>::OPCODE {
             StoppingFlag::DidStop
+        } else if opcode == <Add32Instruction as Instruction<Self, F>>::OPCODE {
+            StoppingFlag::DidStop
         } else if opcode == <FailInstruction as Instruction<Self, F>>::OPCODE {
             StoppingFlag::DidFail
         } else if state.machine.current_trace_height() >= state.machine.max_trace_height() {
