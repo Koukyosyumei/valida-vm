@@ -444,6 +444,9 @@ impl CpuChip {
         cols.fp = SC::Val::from_canonical_u32(self.registers[clk as usize].fp);
         cols.clk = SC::Val::from_canonical_u32(clk);
         cols.is_last_segment = SC::Val::from_canonical_u32(self.is_last_segment);
+        if self.registers[clk as usize].pc != 0 {
+            cols.is_last_segment = SC::Val::zero();
+        }
         cols.is_real = SC::Val::one();
         self.set_instruction_values(clk, cols);
 
