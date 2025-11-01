@@ -21,7 +21,7 @@ mod program;
 mod proof;
 mod public;
 mod quotient;
-mod symbolic;
+pub mod symbolic;
 mod verify;
 mod write_tape;
 
