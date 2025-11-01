@@ -1,4 +1,4 @@
-pub(crate) mod symbolic_builder;
-mod symbolic_expression;
-mod symbolic_expression_ext;
-mod symbolic_variable;
+pub mod symbolic_builder;
+pub mod symbolic_expression;
+pub mod symbolic_expression_ext;
+pub mod symbolic_variable;
