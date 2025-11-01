@@ -817,7 +817,7 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
             state
                 .machine
                 .state_history
-                .push(convert_state_to_simple_state(state, final_stop_flag));
+                .push(convert_state_to_simple_state(state, step_did_stop));
 
             // If we halted or reached the size limit (need to continue execution
             // in the next segment), we can stop the execution at this point.
