@@ -85,7 +85,7 @@ use crate::{
     ValidaInstanceData, ValidaRuntime, ValidaSegmentBootData, ValidaSegmentInstanceData,
 };
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use ark_std::{end_timer, start_timer};
 
@@ -125,6 +125,38 @@ impl<F: StarkField> MemoryFootprint for BasicMachine<F> {
         result += self.max_segment_size.memory_footprint();
 
         result
+    }
+}
+
+#[derive(Default)]
+pub struct ValidaSimpleState {
+    pc: u32,
+    fp: u32,
+    clk: u32,
+    is_done: bool,
+    memory: HashMap<u32, Word<u8>>,
+}
+
+pub fn convert_state_to_simple_state<F: StarkField>(
+    state: &BasicRunningMachine<F>,
+    stop_flag: StoppingFlag,
+) -> ValidaSimpleState {
+    let pc = state.machine.cpu.pc;
+    let fp = state.machine.cpu.fp;
+    let clk = state.machine.cpu.clock;
+    let memory = state
+        .runtime
+        .memory_backend()
+        .into_iter()
+        .map(|(addr, record)| (addr, record.value))
+        .collect();
+
+    ValidaSimpleState {
+        pc,
+        fp,
+        clk,
+        is_done: stop_flag != StoppingFlag::DidNotStop,
+        memory,
     }
 }
 
@@ -206,6 +238,8 @@ pub struct BasicMachine<F: StarkField> {
     no_log: bool,
 
     max_segment_size: usize,
+
+    pub state_history: Vec<ValidaSimpleState>,
 
     _phantom_sc: PhantomData<fn() -> F>,
 }
@@ -766,6 +800,10 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
         metrics: &mut Self::Metrics,
     ) -> (ValidaSegmentInstanceData, Vec<u8>) {
         let mut final_stop_flag = StoppingFlag::DidNotStop;
+        state
+            .machine
+            .state_history
+            .push(convert_state_to_simple_state(state, final_stop_flag));
 
         let mut step_did_stop = StoppingFlag::DidNotStop;
         loop {
@@ -775,6 +813,12 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
             metrics.register_instruction(&instruction, state);
 
             let step_did_stop = Self::step(state);
+
+            state
+                .machine
+                .state_history
+                .push(convert_state_to_simple_state(state, final_stop_flag));
+
             // If we halted or reached the size limit (need to continue execution
             // in the next segment), we can stop the execution at this point.
             if step_did_stop != StoppingFlag::DidNotStop {
