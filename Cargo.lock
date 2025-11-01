@@ -968,7 +968,7 @@ checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 [[package]]
 name = "p3-air"
 version = "0.1.0"
-source = "git+https://github.com/lita-xyz/Plonky3.git?branch=main#764f45ae3d029c68db95304ffa6ac8cea6acbea8"
+source = "git+https://github.com/Koukyosyumei/lita-xyz-Plonky3.git?branch=debuggable#a4edfef01dc987b951db7a02acdab66ffceee719"
 dependencies = [
  "p3-field",
  "p3-matrix",
@@ -977,7 +977,7 @@ dependencies = [
 [[package]]
 name = "p3-baby-bear"
 version = "0.1.0"
-source = "git+https://github.com/lita-xyz/Plonky3.git?branch=main#764f45ae3d029c68db95304ffa6ac8cea6acbea8"
+source = "git+https://github.com/Koukyosyumei/lita-xyz-Plonky3.git?branch=debuggable#a4edfef01dc987b951db7a02acdab66ffceee719"
 dependencies = [
  "p3-field",
  "rand",
@@ -987,7 +987,7 @@ dependencies = [
 [[package]]
 name = "p3-challenger"
 version = "0.1.0"
-source = "git+https://github.com/lita-xyz/Plonky3.git?branch=main#764f45ae3d029c68db95304ffa6ac8cea6acbea8"
+source = "git+https://github.com/Koukyosyumei/lita-xyz-Plonky3.git?branch=debuggable#a4edfef01dc987b951db7a02acdab66ffceee719"
 dependencies = [
  "p3-field",
  "p3-maybe-rayon",
@@ -998,7 +998,7 @@ dependencies = [
 [[package]]
 name = "p3-commit"
 version = "0.1.0"
-source = "git+https://github.com/lita-xyz/Plonky3.git?branch=main#764f45ae3d029c68db95304ffa6ac8cea6acbea8"
+source = "git+https://github.com/Koukyosyumei/lita-xyz-Plonky3.git?branch=debuggable#a4edfef01dc987b951db7a02acdab66ffceee719"
 dependencies = [
  "p3-challenger",
  "p3-field",
@@ -1009,7 +1009,7 @@ dependencies = [
 [[package]]
 name = "p3-dft"
 version = "0.1.0"
-source = "git+https://github.com/lita-xyz/Plonky3.git?branch=main#764f45ae3d029c68db95304ffa6ac8cea6acbea8"
+source = "git+https://github.com/Koukyosyumei/lita-xyz-Plonky3.git?branch=debuggable#a4edfef01dc987b951db7a02acdab66ffceee719"
 dependencies = [
  "p3-field",
  "p3-matrix",
@@ -1020,7 +1020,7 @@ dependencies = [
 [[package]]
 name = "p3-field"
 version = "0.1.0"
-source = "git+https://github.com/lita-xyz/Plonky3.git?branch=main#764f45ae3d029c68db95304ffa6ac8cea6acbea8"
+source = "git+https://github.com/Koukyosyumei/lita-xyz-Plonky3.git?branch=debuggable#a4edfef01dc987b951db7a02acdab66ffceee719"
 dependencies = [
  "itertools 0.12.1",
  "p3-util",
@@ -1031,7 +1031,7 @@ dependencies = [
 [[package]]
 name = "p3-fri"
 version = "0.1.0"
-source = "git+https://github.com/lita-xyz/Plonky3.git?branch=main#764f45ae3d029c68db95304ffa6ac8cea6acbea8"
+source = "git+https://github.com/Koukyosyumei/lita-xyz-Plonky3.git?branch=debuggable#a4edfef01dc987b951db7a02acdab66ffceee719"
 dependencies = [
  "itertools 0.12.1",
  "p3-challenger",
@@ -1049,7 +1049,7 @@ dependencies = [
 [[package]]
 name = "p3-goldilocks"
 version = "0.1.0"
-source = "git+https://github.com/lita-xyz/Plonky3.git?branch=main#764f45ae3d029c68db95304ffa6ac8cea6acbea8"
+source = "git+https://github.com/Koukyosyumei/lita-xyz-Plonky3.git?branch=debuggable#a4edfef01dc987b951db7a02acdab66ffceee719"
 dependencies = [
  "p3-field",
  "p3-util",
@@ -1060,7 +1060,7 @@ dependencies = [
 [[package]]
 name = "p3-interpolation"
 version = "0.1.0"
-source = "git+https://github.com/lita-xyz/Plonky3.git?branch=main#764f45ae3d029c68db95304ffa6ac8cea6acbea8"
+source = "git+https://github.com/Koukyosyumei/lita-xyz-Plonky3.git?branch=debuggable#a4edfef01dc987b951db7a02acdab66ffceee719"
 dependencies = [
  "p3-field",
  "p3-matrix",
@@ -1071,7 +1071,7 @@ dependencies = [
 [[package]]
 name = "p3-keccak"
 version = "0.1.0"
-source = "git+https://github.com/lita-xyz/Plonky3.git?branch=main#764f45ae3d029c68db95304ffa6ac8cea6acbea8"
+source = "git+https://github.com/Koukyosyumei/lita-xyz-Plonky3.git?branch=debuggable#a4edfef01dc987b951db7a02acdab66ffceee719"
 dependencies = [
  "p3-symmetric",
  "tiny-keccak",
@@ -1080,7 +1080,7 @@ dependencies = [
 [[package]]
 name = "p3-matrix"
 version = "0.1.0"
-source = "git+https://github.com/lita-xyz/Plonky3.git?branch=main#764f45ae3d029c68db95304ffa6ac8cea6acbea8"
+source = "git+https://github.com/Koukyosyumei/lita-xyz-Plonky3.git?branch=debuggable#a4edfef01dc987b951db7a02acdab66ffceee719"
 dependencies = [
  "p3-field",
  "p3-maybe-rayon",
@@ -1092,7 +1092,7 @@ dependencies = [
 [[package]]
 name = "p3-maybe-rayon"
 version = "0.1.0"
-source = "git+https://github.com/lita-xyz/Plonky3.git?branch=main#764f45ae3d029c68db95304ffa6ac8cea6acbea8"
+source = "git+https://github.com/Koukyosyumei/lita-xyz-Plonky3.git?branch=debuggable#a4edfef01dc987b951db7a02acdab66ffceee719"
 dependencies = [
  "rayon",
 ]
@@ -1100,7 +1100,7 @@ dependencies = [
 [[package]]
 name = "p3-mds"
 version = "0.1.0"
-source = "git+https://github.com/lita-xyz/Plonky3.git?branch=main#764f45ae3d029c68db95304ffa6ac8cea6acbea8"
+source = "git+https://github.com/Koukyosyumei/lita-xyz-Plonky3.git?branch=debuggable#a4edfef01dc987b951db7a02acdab66ffceee719"
 dependencies = [
  "p3-baby-bear",
  "p3-dft",
@@ -1116,7 +1116,7 @@ dependencies = [
 [[package]]
 name = "p3-merkle-tree"
 version = "0.1.0"
-source = "git+https://github.com/lita-xyz/Plonky3.git?branch=main#764f45ae3d029c68db95304ffa6ac8cea6acbea8"
+source = "git+https://github.com/Koukyosyumei/lita-xyz-Plonky3.git?branch=debuggable#a4edfef01dc987b951db7a02acdab66ffceee719"
 dependencies = [
  "itertools 0.12.1",
  "p3-commit",
@@ -1132,7 +1132,7 @@ dependencies = [
 [[package]]
 name = "p3-mersenne-31"
 version = "0.1.0"
-source = "git+https://github.com/lita-xyz/Plonky3.git?branch=main#764f45ae3d029c68db95304ffa6ac8cea6acbea8"
+source = "git+https://github.com/Koukyosyumei/lita-xyz-Plonky3.git?branch=debuggable#a4edfef01dc987b951db7a02acdab66ffceee719"
 dependencies = [
  "itertools 0.12.1",
  "p3-dft",
@@ -1147,7 +1147,7 @@ dependencies = [
 [[package]]
 name = "p3-poseidon"
 version = "0.1.0"
-source = "git+https://github.com/lita-xyz/Plonky3.git?branch=main#764f45ae3d029c68db95304ffa6ac8cea6acbea8"
+source = "git+https://github.com/Koukyosyumei/lita-xyz-Plonky3.git?branch=debuggable#a4edfef01dc987b951db7a02acdab66ffceee719"
 dependencies = [
  "p3-field",
  "p3-mds",
@@ -1158,7 +1158,7 @@ dependencies = [
 [[package]]
 name = "p3-symmetric"
 version = "0.1.0"
-source = "git+https://github.com/lita-xyz/Plonky3.git?branch=main#764f45ae3d029c68db95304ffa6ac8cea6acbea8"
+source = "git+https://github.com/Koukyosyumei/lita-xyz-Plonky3.git?branch=debuggable#a4edfef01dc987b951db7a02acdab66ffceee719"
 dependencies = [
  "itertools 0.12.1",
  "p3-field",
@@ -1167,7 +1167,7 @@ dependencies = [
 [[package]]
 name = "p3-uni-stark"
 version = "0.1.0"
-source = "git+https://github.com/lita-xyz/Plonky3.git?branch=main#764f45ae3d029c68db95304ffa6ac8cea6acbea8"
+source = "git+https://github.com/Koukyosyumei/lita-xyz-Plonky3.git?branch=debuggable#a4edfef01dc987b951db7a02acdab66ffceee719"
 dependencies = [
  "itertools 0.12.1",
  "p3-air",
@@ -1186,7 +1186,7 @@ dependencies = [
 [[package]]
 name = "p3-util"
 version = "0.1.0"
-source = "git+https://github.com/lita-xyz/Plonky3.git?branch=main#764f45ae3d029c68db95304ffa6ac8cea6acbea8"
+source = "git+https://github.com/Koukyosyumei/lita-xyz-Plonky3.git?branch=debuggable#a4edfef01dc987b951db7a02acdab66ffceee719"
 dependencies = [
  "serde",
 ]
