@@ -723,6 +723,51 @@ pub fn get_openings<F: StarkField, SC: StarkConfig<Val = F>>(
         .collect()
 }
 
+impl<F: StarkField> BasicMachine<F> {
+    fn generate_traces<SC>(
+        &self,
+        config: &SC,
+        //pk: &MachineProverKey<SC, Self>,
+        opts: ProverOptions,
+        //instance: &ValidaSegmentInstanceData,
+    ) -> ([Option<PublicTrace<F>>; 15], Vec<Option<RowMajorMatrix<F>>>)
+    where
+        SC: StarkConfig<Val = F>,
+    {
+        let ProverOptions {
+            show_main,
+            show_public,
+            show_public_dims,
+            show_main_dims,
+            show_permutation_dims,
+            show_interactions,
+        } = opts;
+
+        //let mut challenger = config.challenger();
+        // TODO: Seed challenger with digest of all constraints & trace lengths.
+        //let pcs = config.pcs();
+        // observe initial state
+        //observe_instance_data::<F, SC>(&mut challenger, instance);
+
+        // Generate preprocessed traces.
+        //let (preprocessed_traces, preprocessed_commit, preprocessed_data) = (
+        //    pk.preprocessed_traces(),
+        //    pk.preprocessed_commit(),
+        //    pk.preprocessed_prover_data(),
+        //);
+
+        // Generate public traces.
+        // let t_public_traces = start_timer!(|| "valida >machine.prove(..) | public_traces");
+        let public_traces = self.generate_public_traces(config, show_public, show_public_dims);
+
+        // Generate main traces.
+        // let t_main_traces = start_timer!(|| "valida >machine.prove(..) | main_traces");
+        let main_traces = self.generate_main_traces(config, show_main, show_main_dims);
+
+        (public_traces, main_traces)
+    }
+}
+
 impl<F: StarkField> Machine<F> for BasicMachine<F> {
     const NUM_CHIPS: usize = NUM_CHIPS;
     type InstanceData = ValidaSegmentInstanceData;
