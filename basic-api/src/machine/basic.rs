@@ -724,7 +724,7 @@ pub fn get_openings<F: StarkField, SC: StarkConfig<Val = F>>(
 }
 
 impl<F: StarkField> BasicMachine<F> {
-    fn generate_traces<SC>(
+    pub fn generate_traces<SC>(
         &self,
         config: &SC,
         //pk: &MachineProverKey<SC, Self>,
