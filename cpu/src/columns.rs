@@ -57,13 +57,13 @@ pub struct CpuCols<T> {
     pub is_real: T,
 }
 
-#[derive(Default, Debug)]
+#[derive(AlignedBorrow, Default, Debug)]
 pub struct InstructionCols<T> {
     pub opcode: T,
     pub operands: Operands<T>,
 }
 
-#[derive(Default, Debug)]
+#[derive(AlignedBorrow, Default, Debug)]
 pub struct OpcodeFlagCols<T> {
     pub is_bus_op: T,
     pub is_pointer_op: T,
@@ -85,19 +85,19 @@ pub struct OpcodeFlagCols<T> {
     pub is_write: T,
 }
 
-#[derive(Debug)]
+#[derive(AlignedBorrow, Debug)]
 pub enum MemoryChannelCols<T> {
     ReadCols(ReadChannelCols<T>),
     WriteCols(WriteChannelCols<T>),
 }
-#[derive(Default, Debug)]
+#[derive(AlignedBorrow, Default, Debug)]
 pub struct ReadChannelCols<T> {
     pub used: T,
     pub addr: T,
     pub value: Word<T>,
 }
 
-#[derive(Default, Debug)]
+#[derive(AlignedBorrow, Default, Debug)]
 pub struct WriteChannelCols<T> {
     pub used: T,
     pub addr: T,
