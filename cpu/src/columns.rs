@@ -5,6 +5,7 @@ use valida_machine::{Operands, Word, CPU_MEMORY_READ_CHANNELS, CPU_MEMORY_WRITE_
 use valida_util::indices_arr;
 
 #[derive(AlignedBorrow, Default, Debug)]
+#[repr(C)]
 pub struct CpuPublicVector<T> {
     /// Initial program counter
     pub pc_init: T,
@@ -16,6 +17,7 @@ pub struct CpuPublicVector<T> {
 }
 
 #[derive(AlignedBorrow, Default, Debug)]
+#[repr(C)]
 pub struct CpuCols<T> {
     /// Clock cycle
     pub clk: T,
@@ -58,12 +60,14 @@ pub struct CpuCols<T> {
 }
 
 #[derive(AlignedBorrow, Default, Debug)]
+#[repr(C)]
 pub struct InstructionCols<T> {
     pub opcode: T,
     pub operands: Operands<T>,
 }
 
 #[derive(AlignedBorrow, Default, Debug)]
+#[repr(C)]
 pub struct OpcodeFlagCols<T> {
     pub is_bus_op: T,
     pub is_pointer_op: T,
@@ -86,11 +90,13 @@ pub struct OpcodeFlagCols<T> {
 }
 
 #[derive(AlignedBorrow, Debug)]
+#[repr(C)]
 pub enum MemoryChannelCols<T> {
     ReadCols(ReadChannelCols<T>),
     WriteCols(WriteChannelCols<T>),
 }
 #[derive(AlignedBorrow, Default, Debug)]
+#[repr(C)]
 pub struct ReadChannelCols<T> {
     pub used: T,
     pub addr: T,
@@ -98,6 +104,7 @@ pub struct ReadChannelCols<T> {
 }
 
 #[derive(AlignedBorrow, Default, Debug)]
+#[repr(C)]
 pub struct WriteChannelCols<T> {
     pub used: T,
     pub addr: T,
