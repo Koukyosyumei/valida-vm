@@ -73,7 +73,7 @@ pub struct SymbolicAirBuilder<'a, M: Machine<SC::Val>, SC: StarkConfig> {
 
 impl<'a, M: Machine<SC::Val>, SC: StarkConfig> SymbolicAirBuilder<'a, M, SC> {
     const NUM_ROUNDS: usize = 3;
-    pub(crate) fn new(
+    pub fn new(
         machine: &'a M,
         main_width: usize,
         preprocessed_width: usize,
@@ -93,7 +93,7 @@ impl<'a, M: Machine<SC::Val>, SC: StarkConfig> SymbolicAirBuilder<'a, M, SC> {
         }
     }
 
-    pub(crate) fn constraints(self) -> Vec<SymbolicExpression<SC::Val>> {
+    pub fn constraints(self) -> Vec<SymbolicExpression<SC::Val>> {
         self.constraints
     }
 }
