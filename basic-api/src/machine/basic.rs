@@ -128,7 +128,7 @@ impl<F: StarkField> MemoryFootprint for BasicMachine<F> {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct ValidaSimpleState {
     pub pc: u32,
     pub fp: u32,
