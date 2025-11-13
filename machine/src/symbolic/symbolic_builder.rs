@@ -181,7 +181,7 @@ fn type_cast<T: p3_field::Field, F: p3_field::Field>(
         SymbolicExpression::IsFirstRow => SymbolicExpression::IsFirstRow,
         SymbolicExpression::IsLastRow => SymbolicExpression::IsLastRow,
         SymbolicExpression::IsTransition => SymbolicExpression::IsTransition,
-        SymbolicExpression::Constant(_) => todo!(),
+        SymbolicExpression::Constant(k) => SymbolicExpression::Constant(F::zero()),
         SymbolicExpression::Add {
             x,
             y,
