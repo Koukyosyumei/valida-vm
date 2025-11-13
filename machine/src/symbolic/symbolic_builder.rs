@@ -1,3 +1,5 @@
+use core::marker::PhantomData;
+
 use alloc::vec::Vec;
 
 use crate::config::StarkConfig;
@@ -164,6 +166,56 @@ impl<M: Machine<SC::Val>, SC: StarkConfig> PairBuilder for SymbolicAirBuilder<'_
     }
 }
 
+fn type_cast<T: p3_field::Field, F: p3_field::Field>(
+    expr: &SymbolicExpression<T>,
+) -> SymbolicExpression<F> {
+    match expr {
+        SymbolicExpression::Variable(symbolic_variable) => {
+            SymbolicExpression::Variable(SymbolicVariable {
+                trace: symbolic_variable.trace,
+                is_next: symbolic_variable.is_next,
+                column: symbolic_variable.column,
+                _phantom: PhantomData,
+            })
+        }
+        SymbolicExpression::IsFirstRow => SymbolicExpression::IsFirstRow,
+        SymbolicExpression::IsLastRow => SymbolicExpression::IsLastRow,
+        SymbolicExpression::IsTransition => SymbolicExpression::IsTransition,
+        SymbolicExpression::Constant(_) => todo!(),
+        SymbolicExpression::Add {
+            x,
+            y,
+            degree_multiple,
+        } => SymbolicExpression::Add {
+            x: type_cast(x).into(),
+            y: type_cast(y).into(),
+            degree_multiple: *degree_multiple,
+        },
+        SymbolicExpression::Sub {
+            x,
+            y,
+            degree_multiple,
+        } => SymbolicExpression::Sub {
+            x: type_cast(x).into(),
+            y: type_cast(y).into(),
+            degree_multiple: *degree_multiple,
+        },
+        SymbolicExpression::Neg { x, degree_multiple } => SymbolicExpression::Neg {
+            x: type_cast(x).into(),
+            degree_multiple: *degree_multiple,
+        },
+        SymbolicExpression::Mul {
+            x,
+            y,
+            degree_multiple,
+        } => SymbolicExpression::Mul {
+            x: type_cast(x).into(),
+            y: type_cast(y).into(),
+            degree_multiple: *degree_multiple,
+        },
+    }
+}
+
 impl<M: Machine<SC::Val>, SC: StarkConfig> ExtensionBuilder for SymbolicAirBuilder<'_, M, SC> {
     type EF = SC::Challenge;
     type ExprEF = SymbolicExpressionExt<SC::Challenge>;
@@ -173,9 +225,13 @@ impl<M: Machine<SC::Val>, SC: StarkConfig> ExtensionBuilder for SymbolicAirBuild
     where
         I: Into<Self::ExprEF>,
     {
+        let b: SymbolicExpression<SC::Val> = type_cast(&x.into().0);
+        self.assert_zero::<SymbolicExpression<SC::Val>>(b);
+
+        /*
         for xb in x.into().as_base_slice().iter().cloned() {
             self.assert_zero::<SymbolicExpression<SC::Val>>(xb);
-        }
+        }*/
     }
 }
 
