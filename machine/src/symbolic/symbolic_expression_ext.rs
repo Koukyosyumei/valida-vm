@@ -160,7 +160,7 @@ where
     }
 
     fn as_base_slice(&self) -> &[SymbolicExpression<F>] {
-        todo!("as_base_slice")
+        &[]
     }
 }
 
