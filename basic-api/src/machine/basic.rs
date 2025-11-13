@@ -130,11 +130,11 @@ impl<F: StarkField> MemoryFootprint for BasicMachine<F> {
 
 #[derive(Default, Debug)]
 pub struct ValidaSimpleState {
-    pc: u32,
-    fp: u32,
-    clk: u32,
-    is_done: bool,
-    memory: HashMap<u32, Word<u8>>,
+    pub pc: u32,
+    pub fp: u32,
+    pub clk: u32,
+    pub is_done: bool,
+    pub memory: HashMap<u32, Word<u8>>,
 }
 
 pub fn convert_state_to_simple_state<F: StarkField>(
