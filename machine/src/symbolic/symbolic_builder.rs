@@ -11,6 +11,7 @@ use valida_machine::debug_builder::AirBuilderWithGlobalPermutationChallenges;
 use valida_machine::symbolic::symbolic_expression_ext::SymbolicExpressionExt;
 use valida_machine::symbolic::symbolic_variable::Trace;
 
+use crate::permutation::eval_permutation_constraints;
 use crate::symbolic::symbolic_expression::SymbolicExpression;
 use crate::symbolic::symbolic_variable::SymbolicVariable;
 
@@ -56,6 +57,29 @@ where
         chip.permutation_width(machine),
     );
     chip.eval(&mut builder);
+    builder.constraints()
+}
+
+pub fn get_symbolic_lookups<M, SC, C>(machine: &M, chip: &C) -> Vec<SymbolicExpression<SC::Val>>
+where
+    M: Machine<SC::Val>,
+    SC: StarkConfig,
+    C: ChipWithPersistence<M, SC>,
+{
+    let mut builder = SymbolicAirBuilder::new(
+        machine,
+        chip.main_width(),
+        chip.preprocessed_width(),
+        chip.public_width(),
+        chip.permutation_width(machine),
+    );
+
+    eval_permutation_constraints(
+        chip,
+        &mut builder,
+        Some(SymbolicExpressionExt::zero()),
+        Some(SymbolicExpressionExt::zero()),
+    );
     builder.constraints()
 }
 
