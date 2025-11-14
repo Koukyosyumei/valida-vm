@@ -16,7 +16,7 @@ use p3_matrix::Matrix;
 use p3_matrix::MatrixRowSlices;
 use p3_maybe_rayon::prelude::*;
 
-fn display_interaction<F: Field>(
+pub fn display_interaction<F: Field>(
     index: usize,
     interaction_type: InteractionType,
     interaction: &Interaction<F>,
