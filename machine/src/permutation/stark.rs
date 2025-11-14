@@ -74,6 +74,8 @@ pub fn eval_permutation_constraints<M, C, SC, AB>(
         )
         .collect::<Vec<(Interaction<SC::Val>, InteractionType)>>();
 
+    println!("persistent_interactions: {:?}", persistent_interactions);
+
     let trace_height = num_ephemeral + num_persistent_sends + num_persistent_receives;
     // Bound the height to less than 2**32 (from epsilon_1 term in soundness analysis, see Theorem 4 of LogUp paper).
     if trace_height as u32 >= MAX_PERMUTATION_HEIGHT {
