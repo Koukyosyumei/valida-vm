@@ -5,7 +5,7 @@ extern crate self as valida_machine;
 
 pub mod __internal;
 mod advice;
-mod check_constraints;
+pub mod check_constraints;
 mod chip;
 mod config;
 mod core;
