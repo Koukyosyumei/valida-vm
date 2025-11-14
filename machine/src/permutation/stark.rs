@@ -34,6 +34,7 @@ pub fn eval_permutation_constraints<M, C, SC, AB>(
     let ephemeral_interactions = chip.ephemeral_interactions(machine);
     let persistent_sends = chip.persistent_sends(machine);
     let persistent_receives = chip.persistent_receives(machine);
+    println!("ephemeral_interactions: {:?}", ephemeral_interactions);
     println!("persistent_sends: {:?}", persistent_sends);
     println!("persistent_receives: {:?}", persistent_receives);
 
