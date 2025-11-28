@@ -3,6 +3,7 @@ use crate::common::{
     MemorySize, MAX_ADDR,
 };
 use crate::testmachine::TestMachine;
+use rand::Rng;
 
 use p3_baby_bear::BabyBear;
 use valida_basic_api::{BasicMachine, ValidaRuntime};

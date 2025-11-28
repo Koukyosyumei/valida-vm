@@ -1,6 +1,7 @@
 use core::cmp::min;
 
 use p3_air::{Air, ExtensionBuilder};
+use p3_field::Field;
 use p3_field::{AbstractField, Powers};
 use p3_matrix::{Matrix, MatrixRowSlices};
 
@@ -10,6 +11,55 @@ use crate::{
     persistence::ChipWithPersistence,
     Interaction, InteractionType, Machine, StarkConfig, ValidaAirBuilder,
 };
+
+pub fn inspect_lookup_interactions<M, C, SC, AB>(
+    chip: &C,
+    machine: &M,
+    range_u8_cols: &mut Vec<usize>,
+) where
+    M: Machine<SC::Val>,
+    C: ChipWithPersistence<M, SC> + Air<AB>,
+    SC: StarkConfig,
+    AB: ValidaAirBuilder<Machine = M, F = SC::Val, EF = SC::Challenge>,
+{
+    let ephemeral_interactions = chip.ephemeral_interactions(machine);
+
+    for (e_interaction, interaction_type) in &ephemeral_interactions {
+        match interaction_type {
+            InteractionType::LocalSend => {}
+            InteractionType::LocalReceive => {}
+            InteractionType::GlobalSend => match e_interaction.argument_index {
+                crate::BusArgument::Local(_) => {}
+                crate::BusArgument::Global(idx) => {
+                    // Lookup with Range8
+                    if idx == 5 {
+                        for pair in &e_interaction.fields {
+                            if pair.constant.is_zero() {
+                                for (col, _weight) in &pair.column_weights {
+                                    match col {
+                                        p3_air::PairCol::Preprocessed(_) => {}
+                                        p3_air::PairCol::Public(_) => {}
+                                        p3_air::PairCol::Main(col_idx) => {
+                                            range_u8_cols.push(col_idx.clone());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                crate::BusArgument::Persistent(_) => {}
+            },
+            InteractionType::GlobalReceive => match e_interaction.argument_index {
+                crate::BusArgument::Local(_) => {}
+                crate::BusArgument::Global(_) => {}
+                crate::BusArgument::Persistent(_) => {}
+            },
+            InteractionType::PersistentSend => {}
+            InteractionType::PersistentReceive => {}
+        }
+    }
+}
 
 pub fn eval_permutation_constraints<M, C, SC, AB>(
     chip: &C,
@@ -34,13 +84,6 @@ pub fn eval_permutation_constraints<M, C, SC, AB>(
     let ephemeral_interactions = chip.ephemeral_interactions(machine);
     let persistent_sends = chip.persistent_sends(machine);
     let persistent_receives = chip.persistent_receives(machine);
-    for e in &ephemeral_interactions {
-        println!("  {:?}", e);
-    }
-
-    //println!("ephemeral_interactions: {:?}", ephemeral_interactions);
-    println!("persistent_sends: {:?}", persistent_sends);
-    println!("persistent_receives: {:?}", persistent_receives);
 
     let num_ephemeral = ephemeral_interactions.len();
     let num_persistent_sends = persistent_sends.len();
@@ -78,8 +121,6 @@ pub fn eval_permutation_constraints<M, C, SC, AB>(
                 .map(|interaction| (interaction, InteractionType::PersistentReceive)),
         )
         .collect::<Vec<(Interaction<SC::Val>, InteractionType)>>();
-
-    println!("persistent_interactions: {:?}", persistent_interactions);
 
     let trace_height = num_ephemeral + num_persistent_sends + num_persistent_receives;
     // Bound the height to less than 2**32 (from epsilon_1 term in soundness analysis, see Theorem 4 of LogUp paper).
