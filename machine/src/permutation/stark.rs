@@ -26,6 +26,8 @@ pub fn inspect_lookup_interactions<M, C, SC, AB>(
     let ephemeral_interactions = chip.ephemeral_interactions(machine);
 
     for (e_interaction, interaction_type) in &ephemeral_interactions {
+        println!("e_interaction: {:?}", e_interaction);
+
         match interaction_type {
             InteractionType::LocalSend => {}
             InteractionType::LocalReceive => {}
