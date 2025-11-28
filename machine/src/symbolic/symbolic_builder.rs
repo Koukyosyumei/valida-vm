@@ -4,6 +4,7 @@ use alloc::vec::Vec;
 
 use crate::config::StarkConfig;
 use crate::persistence::ChipWithPersistence;
+use crate::stark::inspect_lookup_interactions;
 use crate::{Machine, ValidaAirBuilder};
 use p3_air::{AirBuilder, PairBuilder, PermutationAirBuilder};
 use p3_air::{AirBuilderWithPublicValues, ExtensionBuilder, TwoRowMatrixView};
@@ -43,6 +44,23 @@ where
         .map(|c| c.degree_multiple())
         .max()
         .unwrap_or(0)
+}
+
+pub fn get_lookup_interactions<M, SC, C>(machine: &M, chip: &C, range_u8_cols: &mut Vec<usize>)
+where
+    M: Machine<SC::Val>,
+    SC: StarkConfig,
+    C: ChipWithPersistence<M, SC>,
+{
+    let mut builder = SymbolicAirBuilder::new(
+        machine,
+        chip.main_width(),
+        chip.preprocessed_width(),
+        chip.public_width(),
+        chip.permutation_width(machine),
+    );
+
+    inspect_lookup_interactions(chip, &mut builder, range_u8_cols);
 }
 
 pub fn get_symbolic_constraints<M, SC, C>(machine: &M, chip: &C) -> Vec<SymbolicExpression<SC::Val>>
