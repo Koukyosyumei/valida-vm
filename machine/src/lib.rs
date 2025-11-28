@@ -15,7 +15,7 @@ mod folding_builder;
 mod indexer;
 mod machine;
 mod memory_backend;
-mod permutation;
+pub mod permutation;
 mod persistence;
 mod program;
 mod proof;
