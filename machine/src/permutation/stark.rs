@@ -16,6 +16,7 @@ pub fn inspect_lookup_interactions<M, C, SC, AB>(
     chip: &C,
     builder: &mut AB,
     range_u8_cols: &mut Vec<usize>,
+    pc_cols: &mut Vec<usize>,
 ) where
     M: Machine<SC::Val>,
     C: ChipWithPersistence<M, SC> + Air<AB>,
@@ -55,7 +56,18 @@ pub fn inspect_lookup_interactions<M, C, SC, AB>(
             },
             InteractionType::GlobalReceive => match e_interaction.argument_index {
                 crate::BusArgument::Local(_) => {}
-                crate::BusArgument::Global(_) => {}
+                crate::BusArgument::Global(idx) => {
+                    // Lookup with CPU
+                    if idx == 0 {
+                        for pair in &e_interaction.fields {
+                            for (col, _weight) in &pair.column_weights {
+                                if let p3_air::PairCol::Main(col_idx) = col {
+                                    pc_cols.push(*col_idx);
+                                }
+                            }
+                        }
+                    }
+                }
                 crate::BusArgument::Persistent(_) => {}
             },
             InteractionType::PersistentSend => {}

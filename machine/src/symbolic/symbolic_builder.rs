@@ -46,8 +46,12 @@ where
         .unwrap_or(0)
 }
 
-pub fn get_lookup_interactions<M, SC, C>(machine: &M, chip: &C, range_u8_cols: &mut Vec<usize>)
-where
+pub fn get_lookup_interactions<M, SC, C>(
+    machine: &M,
+    chip: &C,
+    range_u8_cols: &mut Vec<usize>,
+    pc_cols: &mut Vec<usize>,
+) where
     M: Machine<SC::Val>,
     SC: StarkConfig,
     C: ChipWithPersistence<M, SC>,
@@ -60,7 +64,7 @@ where
         chip.permutation_width(machine),
     );
 
-    inspect_lookup_interactions(chip, &mut builder, range_u8_cols);
+    inspect_lookup_interactions(chip, &mut builder, range_u8_cols, pc_cols);
 }
 
 pub fn get_symbolic_constraints<M, SC, C>(machine: &M, chip: &C) -> Vec<SymbolicExpression<SC::Val>>
