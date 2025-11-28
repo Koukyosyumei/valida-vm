@@ -14,7 +14,7 @@ use crate::{
 
 pub fn inspect_lookup_interactions<M, C, SC, AB>(
     chip: &C,
-    machine: &M,
+    builder: &mut AB,
     range_u8_cols: &mut Vec<usize>,
 ) where
     M: Machine<SC::Val>,
@@ -22,6 +22,7 @@ pub fn inspect_lookup_interactions<M, C, SC, AB>(
     SC: StarkConfig,
     AB: ValidaAirBuilder<Machine = M, F = SC::Val, EF = SC::Challenge>,
 {
+    let machine = builder.machine();
     let ephemeral_interactions = chip.ephemeral_interactions(machine);
 
     for (e_interaction, interaction_type) in &ephemeral_interactions {
