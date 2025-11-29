@@ -506,7 +506,7 @@ pub struct ColumnOpInfo {
 pub fn build_column_to_op_map() -> Vec<Option<ColumnOpInfo>> {
     let mut map = vec![None; num_bytes_cols()];
 
-    for op in ByteOperation::iter() {
+    for op in ByteOperation::iter().take(ByteOperation::COUNT - 1) {
         let start = starting_column_index_of_byte_op(op);
         let len = output_length_of_byte_op(op);
 
@@ -515,6 +515,19 @@ pub fn build_column_to_op_map() -> Vec<Option<ColumnOpInfo>> {
                 op,
                 output_index: i,
             });
+        }
+    }
+
+    for shift_amt in 0u8..=8 {
+        let op = ByteOperation::LeftShiftAndRightShift(shift_amt);
+        let len = output_length_of_byte_op(op);
+
+        for i in 0..len {
+            map[col] = Some(ColumnOpInfo {
+                op,
+                output_index: i,
+            });
+            col += 1;
         }
     }
 
