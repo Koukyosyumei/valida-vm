@@ -17,6 +17,7 @@ pub fn inspect_lookup_interactions<M, C, SC, AB>(
     builder: &mut AB,
     range_u8_cols: &mut Vec<usize>,
     pc_cols: &mut Vec<usize>,
+    counter_cols: &mut Vec<usize>,
 ) where
     M: Machine<SC::Val>,
     C: ChipWithPersistence<M, SC> + Air<AB>,
@@ -34,9 +35,9 @@ pub fn inspect_lookup_interactions<M, C, SC, AB>(
             InteractionType::LocalReceive => {}
             InteractionType::GlobalSend => match e_interaction.argument_index {
                 crate::BusArgument::Local(_) => {}
-                crate::BusArgument::Global(idx) => {
+                crate::BusArgument::Global(id) => {
                     // Lookup with Range8
-                    if idx == 5 {
+                    if id == 5 {
                         for pair in &e_interaction.fields {
                             if pair.constant.is_zero() {
                                 for (col, _weight) in &pair.column_weights {
@@ -56,14 +57,19 @@ pub fn inspect_lookup_interactions<M, C, SC, AB>(
             },
             InteractionType::GlobalReceive => match e_interaction.argument_index {
                 crate::BusArgument::Local(_) => {}
-                crate::BusArgument::Global(idx) => {
+                crate::BusArgument::Global(id) => {
                     // Lookup with CPU
-                    if idx == 0 {
+                    if id == 0 {
                         for pair in &e_interaction.fields {
                             for (col, _weight) in &pair.column_weights {
                                 if let p3_air::PairCol::Main(col_idx) = col {
                                     pc_cols.push(*col_idx);
                                 }
+                            }
+                        }
+                        for (col, _weight) in &e_interaction.count.column_weights {
+                            if let p3_air::PairCol::Main(col_idx) = col {
+                                counter_cols.push(*col_idx);
                             }
                         }
                     }
