@@ -503,7 +503,7 @@ pub struct ColumnOpInfo {
 }
 
 /// Builds a vector mapping each column index to the corresponding operation and local index.
-pub fn build_column_to_op_map() -> Vec<ColumnOpInfo> {
+pub fn build_column_to_op_map() -> Vec<Option<ColumnOpInfo>> {
     let mut map = vec![None; num_bytes_cols()];
 
     for op in ByteOperation::iter() {
@@ -518,7 +518,5 @@ pub fn build_column_to_op_map() -> Vec<ColumnOpInfo> {
         }
     }
 
-    map.into_iter()
-        .map(|x| x.expect("All columns must belong to some ByteOperation"))
-        .collect()
+    map.into_iter().map(|x| x).collect()
 }
