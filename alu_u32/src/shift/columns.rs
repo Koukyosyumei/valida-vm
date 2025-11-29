@@ -8,7 +8,6 @@ use valida_util::indices_arr;
 pub const SHIFT_BY_BITS: usize = 5;
 
 #[derive(AlignedBorrow, Default, Debug)]
-#[repr(C)]
 pub struct Shift32Cols<T> {
     pub input_1: Word<T>,
     pub input_2: Word<T>,
