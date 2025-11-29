@@ -520,14 +520,14 @@ pub fn build_column_to_op_map() -> Vec<Option<ColumnOpInfo>> {
 
     for shift_amt in 0u8..=8 {
         let op = ByteOperation::LeftShiftAndRightShift(shift_amt);
+        let start = starting_column_index_of_byte_op(op);
         let len = output_length_of_byte_op(op);
 
         for i in 0..len {
-            map[col] = Some(ColumnOpInfo {
+            map[start + i] = Some(ColumnOpInfo {
                 op,
                 output_index: i,
             });
-            col += 1;
         }
     }
 
