@@ -495,3 +495,30 @@ where
         self.check_byte_op(byte, ByteOperation::Range);
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct ColumnOpInfo {
+    pub op: ByteOperation,
+    pub output_index: usize, // 0..output_length(op)-1
+}
+
+/// Builds a vector mapping each column index to the corresponding operation and local index.
+pub fn build_column_to_op_map() -> Vec<ColumnOpInfo> {
+    let mut map = vec![None; num_bytes_cols()];
+
+    for op in ByteOperation::iter() {
+        let start = starting_column_index_of_byte_op(op);
+        let len = output_length_of_byte_op(op);
+
+        for i in 0..len {
+            map[start + i] = Some(ColumnOpInfo {
+                op,
+                output_index: i,
+            });
+        }
+    }
+
+    map.into_iter()
+        .map(|x| x.expect("All columns must belong to some ByteOperation"))
+        .collect()
+}

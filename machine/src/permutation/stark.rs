@@ -12,6 +12,8 @@ use crate::{
     Interaction, InteractionType, Machine, StarkConfig, ValidaAirBuilder,
 };
 
+pub struct LookupConstraints {}
+
 pub fn inspect_lookup_interactions<M, C, SC, AB>(
     chip: &C,
     builder: &mut AB,
