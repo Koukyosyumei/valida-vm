@@ -1,6 +1,7 @@
 #![feature(trait_upcasting)]
 use core::marker::PhantomData;
 
+use std::borrow::BorrowMut;
 use std::fs::File;
 use std::io::Write;
 use std::ops::RangeInclusive;
@@ -41,6 +42,7 @@ use valida_bus::{
     MachineWithRangeBus8,
 };
 use valida_bytes::{BytesChip, BytesTable, MachineWithBytesChip, MachineWithRangeCheckeru8};
+use valida_cpu::columns::CpuCols;
 use valida_cpu::{
     BeqInstruction, BneInstruction, CpuChip, FailInstruction, Imm32Instruction, JalInstruction,
     JalvInstruction, Load32Instruction, LoadFpInstruction, LoadS8Instruction, LoadU8Instruction,
@@ -765,8 +767,9 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
         state: &mut BasicRunningMachine<F>,
         metrics: &mut Self::Metrics,
     ) -> (ValidaSegmentInstanceData, Vec<u8>) {
-        let mut final_stop_flag = StoppingFlag::DidNotStop;
+        let mut final_stop_flag = StoppingFlag::DidStop;
 
+        /*
         let mut step_did_stop = StoppingFlag::DidNotStop;
         loop {
             let pc = state.machine.cpu().pc;
@@ -781,7 +784,7 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
                 final_stop_flag = step_did_stop;
                 break;
             }
-        }
+        }*/
 
         let log = state.machine.log_enabled();
         let (pc_init, pc_final, fp_init, fp_final) = {
@@ -1069,7 +1072,14 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
 
         // Generate main traces.
         let t_main_traces = start_timer!(|| "valida >machine.prove(..) | main_traces");
-        let main_traces = self.generate_main_traces(config, show_main, show_main_dims);
+        let mut main_traces = self.generate_main_traces(config, show_main, show_main_dims);
+        if let Some(trace) = &mut main_traces[0] {
+            let row: &mut CpuCols<F> = trace.row_mut(0).borrow_mut();
+            row.fp = F::from_canonical_u16(4096);
+            row.opcode_flags.is_stop = F::one();
+            row.is_last_segment = F::one();
+            println!("row: {:?}", row);
+        }
         end_timer!(t_main_traces);
 
         let has_main_traces = has_traces(&main_traces);

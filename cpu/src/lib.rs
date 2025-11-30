@@ -1092,7 +1092,7 @@ where
             imm = Some(c);
             c
         } else {
-            let read_addr_2 = state.machine.cpu().fp as u32; //(state.machine.cpu().fp as i32 + ops.c()) as u32;
+            let read_addr_2 = (state.machine.cpu().fp as i32 + ops.c()) as u32;
             M::read(state, clk, read_addr_2)
         };
         if state.machine.log_enabled() {
