@@ -47,6 +47,36 @@ use valida_machine::__internal::p3_commit::ExtensionMmcs;
 mod common;
 use common::*;
 
+fn get_target_program<Val: StarkField>() -> Vec<InstructionWord<i32>> {
+    let bytes_per_instr = BYTES_PER_INSTR as i32;
+
+    let mut program = vec![];
+    program.extend([
+        InstructionWord {
+            opcode: <Imm32Instruction as Instruction<BasicMachine<Val>, Val>>::OPCODE,
+            operands: Operands([0, 1, 0, 0, 0]),
+        },
+        InstructionWord {
+            opcode: <Imm32Instruction as Instruction<BasicMachine<Val>, Val>>::OPCODE,
+            operands: Operands([-4, 2, 0, 0, 0]),
+        },
+        InstructionWord {
+            opcode: <Add32Instruction as Instruction<BasicMachine<Val>, Val>>::OPCODE,
+            operands: Operands([-8, -8, 1, 0, 1]),
+        },
+        InstructionWord {
+            opcode: <BneInstruction as Instruction<BasicMachine<Val>, Val>>::OPCODE,
+            operands: Operands([1 * bytes_per_instr, -8, -4, 0, 0]),
+        },
+        InstructionWord {
+            opcode: <StopInstruction as Instruction<BasicMachine<Val>, Val>>::OPCODE,
+            operands: Operands::default(),
+        },
+    ]);
+
+    program
+}
+
 fn div_program<Val: StarkField>() -> Vec<InstructionWord<i32>> {
     let mut program = vec![];
 
@@ -1041,6 +1071,19 @@ fn expected_sdiv_memory_state(memory_backend: &ValidaMemoryBackend) {
         memory_backend.get_value(0x1000 + 40),
         Word::from(0) // 0 / -3 = 0
     );
+}
+
+// get_target_program
+#[test]
+fn prove_target() {
+    /*
+    CPU row 2: CpuCols { clk: 2, pc: 2, fp: 4096, instruction: InstructionCols { opcode: 6, operands: Operands([24, 2013265913, 2013265917, 0, 0]) }, opcode_flags: OpcodeFlagCols { is_bus_op: 0, is_pointer_op: 0, is_imm_op: 0, is_left_imm_op: 0, is_load: 0, is_load_u8: 0, is_load_s8: 0, is_store: 0, is_store_u8: 0, is_beq: 0, is_bne: 1, is_jal: 0, is_jalv: 0, is_imm32: 0, is_advice: 0, is_stop: 0, is_loadfp: 0, is_write: 0 }, diff: 1, diff_inv: 1, not_equal: 1, mem_read_channels: [ReadChannelCols { used: 1, addr: 4088, value: Word([1, 0, 0, 0]) }, ReadChannelCols { used: 1, addr: 4092, value: Word([2, 0, 0, 0]) }], mem_write_channels: [WriteChannelCols { used: 0, addr: 0, value: Word([0, 0, 0, 0]), old_value: Word([0, 0, 0, 0]) }], addr_offset_flags: Word([0, 0, 0, 0]), sign_bit: 0, is_last_segment: 1, is_real: 1 }
+     */
+
+    let program = get_target_program::<BabyBear>();
+    let (_machine, memory_backend) = prove_program(program, ProgramTableType::Public);
+    //expected_sdiv_memory_state(&memory_backend);
+    assert!(false, "Verification should fail");
 }
 
 #[test]
