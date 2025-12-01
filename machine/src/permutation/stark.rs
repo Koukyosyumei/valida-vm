@@ -62,7 +62,7 @@ pub fn inspect_lookup_interactions<M, C, SC, AB>(
                 crate::BusArgument::Global(id) => {
                     // Lookup with CPU
                     if id == 0 {
-                        for pair in &e_interaction.fields.iter().skip(1) {
+                        for pair in e_interaction.fields.iter().skip(1) {
                             for (col, _weight) in &pair.column_weights {
                                 if let p3_air::PairCol::Main(col_idx) = col {
                                     pc_cols.push(*col_idx);
