@@ -50,7 +50,7 @@ pub fn get_lookup_interactions<M, SC, C>(
     machine: &M,
     chip: &C,
     range_u8_cols: &mut Vec<usize>,
-    pc_cols: &mut Vec<usize>,
+    pc_cols: &mut Vec<Vec<usize>>,
     counter_cols: &mut Vec<usize>,
 ) where
     M: Machine<SC::Val>,

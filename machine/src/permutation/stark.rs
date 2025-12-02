@@ -18,7 +18,7 @@ pub fn inspect_lookup_interactions<M, C, SC, AB>(
     chip: &C,
     builder: &mut AB,
     range_u8_cols: &mut Vec<usize>,
-    pc_cols: &mut Vec<usize>,
+    pc_cols: &mut Vec<Vec<usize>>,
     counter_cols: &mut Vec<usize>,
 ) where
     M: Machine<SC::Val>,
@@ -62,12 +62,14 @@ pub fn inspect_lookup_interactions<M, C, SC, AB>(
                 crate::BusArgument::Global(id) => {
                     // Lookup with CPU
                     if id == 0 {
-                        for pair in e_interaction.fields.iter().skip(1) {
+                        for pair in e_interaction.fields.iter() {
+                            let mut sub_cols = Vec::new();
                             for (col, _weight) in &pair.column_weights {
                                 if let p3_air::PairCol::Main(col_idx) = col {
-                                    pc_cols.push(*col_idx);
+                                    sub_cols.push(*col_idx);
                                 }
                             }
+                            pc_cols.push(sub_cols);
                         }
                         for (col, _weight) in &e_interaction.count.column_weights {
                             if let p3_air::PairCol::Main(col_idx) = col {
