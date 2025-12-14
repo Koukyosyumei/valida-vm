@@ -278,12 +278,15 @@ pub trait MachineWithMemoryChip<F: PrimeField>:
         let log = state.machine.log_enabled();
 
         // Attempt to get the memory record from the current segment's memory backend
-        let record: MemoryRecord = state
+        let mut record: MemoryRecord = state
             .runtime
             .memory_backend()
             .get(&address)
             .copied()
             .unwrap_or_default();
+        if let MemoryAccessTimestamp::ZeroInitialized = record.last_accessed {
+            record.value = Word::<u8>::from_u8(1);
+        }
 
         // Insert the new operation
         let new_record = MemoryRecord {
