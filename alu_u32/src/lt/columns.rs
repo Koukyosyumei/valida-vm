@@ -5,6 +5,7 @@ use valida_machine::Word;
 use valida_util::indices_arr;
 
 #[derive(AlignedBorrow, Default, Debug)]
+#[repr(C)]
 pub struct Lt32Cols<T> {
     pub input_1: Word<T>,
     pub input_2: Word<T>,
