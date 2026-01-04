@@ -237,7 +237,7 @@ impl Div for Word<u8> {
     fn div(self, other: Self) -> Self {
         let b: u32 = self.into();
         let c: u32 = other.into();
-        let res = b / c;
+        let res = if c != 0 { b / c } else { 0 };
         res.into()
     }
 }
