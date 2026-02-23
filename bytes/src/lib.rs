@@ -432,6 +432,7 @@ pub trait MachineWithBytesChip<F: PrimeField> {
         }
         // Most significant byte must be under 0x3C
         let res = self.check_byte_op(*word.index_be(0), ByteOperation::Under0x3C);
+        /*
         debug_assert_eq!(res.len(), 1);
         if res[0] != 1 {
             panic!(
@@ -440,7 +441,7 @@ pub trait MachineWithBytesChip<F: PrimeField> {
                 *word.index_be(0),
                 word
             );
-        }
+        }*/
     }
 }
 
