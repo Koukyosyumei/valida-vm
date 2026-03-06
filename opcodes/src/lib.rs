@@ -3,7 +3,7 @@ use num_enum::TryFromPrimitive;
 pub const BYTES_PER_INSTR: u32 = 24; // 4 bytes per word * 6 words per instruction
 
 #[repr(u32)]
-#[derive(Debug, TryFromPrimitive, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, TryFromPrimitive, PartialEq, Eq, Hash, PartialOrd, Ord, Clone)]
 pub enum Opcode {
     LOAD32 = 1,
     STORE32 = 2,
