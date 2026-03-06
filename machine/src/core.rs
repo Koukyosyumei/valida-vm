@@ -237,12 +237,11 @@ impl Div for Word<u8> {
     fn div(self, other: Self) -> Self {
         let b: u32 = self.into();
         let c: u32 = other.into();
-        if c == 0 {
+        let res = if c == 0 {
             0
         } else {
             b / c
         };
-        let res = b / c;
         res.into()
     }
 }
@@ -262,7 +261,11 @@ impl SDiv for Word<u8> {
         let cu: u32 = other.into();
         let c = cu as i32;
         // perform the division in i32 first, then convert it to u32
-        let res = (b / c) as u32;
+        let res = if c == 0 {
+            0
+        } else {
+            (b / c) as u32
+        };
         res.into()
     }
 }
