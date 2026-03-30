@@ -772,12 +772,15 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
             let pc = state.machine.cpu().pc;
             let instruction = *state.machine.program_rom().get_instruction(pc);
 
+            println!("pc: {}", pc);
             metrics.register_instruction(&instruction, state);
 
             let step_did_stop = Self::step(state);
             // If we halted or reached the size limit (need to continue execution
             // in the next segment), we can stop the execution at this point.
+
             if step_did_stop != StoppingFlag::DidNotStop {
+                println!("aaaaaa {:?}", "1111111111111111");
                 final_stop_flag = step_did_stop;
                 break;
             }
@@ -1421,6 +1424,8 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
         let opcode = instruction.opcode;
         let ops = instruction.operands;
 
+        println!("3333333333222222222222");
+
         // Execute
         match opcode {
             <Load32Instruction as Instruction<Self, F>>::OPCODE => {
@@ -1445,12 +1450,14 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
             <BeqInstruction as Instruction<Self, F>>::OPCODE => BeqInstruction::execute(state, ops),
             <BneInstruction as Instruction<Self, F>>::OPCODE => BneInstruction::execute(state, ops),
             <Imm32Instruction as Instruction<Self, F>>::OPCODE => {
+                println!("3aaa33333333333333344444444444444444444444444");
                 Imm32Instruction::execute(state, ops)
             }
             <StopInstruction as Instruction<Self, F>>::OPCODE => {
                 StopInstruction::execute(state, ops)
             }
             <FailInstruction as Instruction<Self, F>>::OPCODE => {
+                println!("3ddddd33333333333333344444444444444444444444444");
                 FailInstruction::execute(state, ops)
             }
             <LoadFpInstruction as Instruction<Self, F>>::OPCODE => {
@@ -1542,14 +1549,25 @@ impl<F: StarkField> Machine<F> for BasicMachine<F> {
         let log = state.machine.log_enabled();
         state.machine.read_word(pc, log);
 
+        println!("55555555555555555");
+
         // A STOP instruction signals the end of the program
         if opcode == <StopInstruction as Instruction<Self, F>>::OPCODE {
+            println!("33333333333333");
             StoppingFlag::DidStop
         } else if opcode == <FailInstruction as Instruction<Self, F>>::OPCODE {
+            println!("85555666666666666");
             StoppingFlag::DidFail
         } else if state.machine.current_trace_height() >= state.machine.max_trace_height() {
+            println!(
+                "{} {}",
+                state.machine.current_trace_height(),
+                state.machine.max_trace_height()
+            );
+            println!("8888888888888888");
             StoppingFlag::SizeLimitReached
         } else {
+            println!("444444444444444");
             StoppingFlag::DidNotStop
         }
     }
